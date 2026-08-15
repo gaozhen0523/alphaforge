@@ -111,3 +111,10 @@ New scope must clearly improve Quant Developer interview value before it is acce
 - One genuine profiling and performance-optimization story
 - If profiling justifies it, one C++17 / pybind11 optimization module
 - Material sufficient for a 10–30 minute project deep dive
+
+## Python environment:
+- This project uses uv for dependency and environment management.
+- Run Python tools through `uv run`.
+- Do not use pip directly unless explicitly requested.
+- Do not create or use an alternative project environment.
+- If Codex cannot run `uv` because of sandbox/permission restrictions, do not modify or recreate the project environment. Report the limitation and provide the exact `uv run ...` command for the user to execute locally.

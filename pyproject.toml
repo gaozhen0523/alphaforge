@@ -12,6 +12,7 @@ dependencies = [
     "matplotlib>=3.11.1",
     "numpy>=2.5.2",
     "pandas>=3.0.5",
+    "pandas-stubs~=3.0.5",
     "pyarrow>=25.0.1",
     "scipy>=1.18.0",
     "statsmodels>=0.14.6",
@@ -29,6 +30,7 @@ build-backend = "scikit_build_core.build"
 
 [dependency-groups]
 dev = [
+    "pandas-stubs>=3.0.5.260730",
     "pybind11>=3.1.0",
     "pytest>=9.1.1",
 ]
