@@ -1,16 +1,20 @@
 # Current Status
 
-Current:
-Week 1 / Day 1
+## Week / Day
 
-Completed:
-- None
+Week 1 / Day 1 — Data
 
-Key Decisions:
-- None
+## Completed
 
-Known Issues:
-- None
+- Repository initialization
+- Python environment
+- C++17 / CMake / pybind11 base environment configuration
 
-Next:
-- Build market data pipeline.
+## Current Task
+
+- Market Data Layer
+
+## Next
+
+- Define the market-data schema and loader.
+- Download, validate, and store a small OHLCV dataset as Parquet.

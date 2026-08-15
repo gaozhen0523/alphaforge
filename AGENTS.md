@@ -1,42 +1,21 @@
 # AlphaForge Agent Instructions
 
-AlphaForge is an interview-oriented Quant Developer project.
+## Before Every Task
 
-## Goal
-Target roles:
-1. Strategy / Research + Platform QD
-2. Strategy / Research QD
-3. Research Platform / Backtest / Data Infra QD
+1. Read `docs/PROJECT.md`, `docs/ROADMAP.md`, and `docs/STATUS.md`.
+2. Inspect the relevant existing code and tests before making changes.
 
-Core workflow:
-Data → Factor → Signal → Portfolio → Execution → PnL → Metrics
+## Development Rules
 
-## Priorities
-- Correctness > strategy return.
-- Quant + engineering, not pure notebook or normal backend.
-- Keep factor / signal / position / trade semantics explicit.
-- Prevent look-ahead bias.
-- Prefer simple correct Python before optimization.
-- Core logic belongs in src/, not notebooks.
-- Add tests for critical financial logic.
-- Keep experiments reproducible.
+- Correctness > Return.
+- Follow the roadmap and avoid expanding scope without explicit approval.
+- Keep factor, signal, position, trade, return, and PnL semantics explicit; prevent look-ahead bias.
+- Put core logic in `src/`; use notebooks only for research and visualization.
+- Implement correct Python first, profile second, and consider C++ only for a demonstrated hot path.
+- Keep experiments reproducible and add tests for critical financial logic.
 
-## Scope
-Do not introduce without explicit approval:
-- ML / Deep Learning / LLM / Agent
-- HFT / order book / live trading
-- complex optimizer / risk model
-- distributed infrastructure
-- unnecessary factors or dependencies
+## Completion Rules
 
-## Workflow
-Before coding:
-1. Read docs/PROJECT.md
-2. Read docs/ROADMAP.md
-3. Read docs/STATUS.md
-4. Inspect existing code
-
-After completing a task:
-- Run relevant tests.
-- Summarize changes.
-- Update docs/STATUS.md when the day's work is finished.
+- Run relevant tests after changes.
+- Update `docs/STATUS.md` after substantively completing a task.
+- Keep the final response concise: report only changed files, tests, and unresolved issues.

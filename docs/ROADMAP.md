@@ -1,225 +1,175 @@
-# Week 1 — End-to-End MVP
+# AlphaForge — Four-Week Roadmap
 
-目标：
+## Week 1 — End-to-End MVP
 
-> **先完整跑通一次。**
-> 
+Goal: run the complete baseline once.
 
-## Day 1 — Data
+### Day 1 — Data
 
-- 建 repo、schema 和 Data Loader。
-- 下载小规模 OHLCV，清洗并存 Parquet。
+- Define the market-data schema and loader.
+- Download a small OHLCV universe, validate it, and store it as Parquet.
 
-## Day 2 — Factors
+### Day 2 — Factors
 
-- 实现 Momentum / Reversal / Volatility。
-- 统一 factor API 和时间语义。
+- Implement 20-day Momentum, 5-day Reversal, and 20-day Volatility.
+- Standardize the factor API and timing semantics.
 
-## Day 3 — Factor Research
+### Day 3 — Factor Research
 
-- 实现 rank、forward return、IC、ICIR、quantile analysis。
-- 跑出第一版研究结果。
+- Implement cross-sectional rank, forward returns, IC, ICIR, quantile returns, and factor correlation.
+- Produce the first research results.
 
-## Day 4 — Portfolio
+### Day 4 — Portfolio
 
-- factor → signal → target weights。
-- Weekly rebalance、top quantile、equal weight。
+- Convert factor values into signals and target weights.
+- Implement weekly rebalance, top-quantile selection, and equal weighting.
 
-## Day 5 — Backtest
+### Day 5 — Backtest
 
-- position → turnover → cost → return → PnL。
-- 明确 `signal(t) → position(t+1)`，避免 look-ahead。
+- Implement position, turnover, cost, return, and PnL accounting.
+- Enforce `signal(t) → position(t+1)` timing.
 
-## Day 6 — Analytics & Tests
+### Day 6 — Analytics & Tests
 
-- 实现 Sharpe、MDD、volatility、turnover 等。
-- 测试 timing、weights、cost、PnL。
+- Implement annualized return, volatility, Sharpe, max drawdown, and turnover.
+- Test timing, weights, costs, and PnL.
 
-## Day 7 — End-to-End
+### Day 7 — End-to-End
 
-- config 驱动完整 pipeline。
-- 一条命令跑出 baseline results。
+- Connect the config-driven pipeline.
+- Run baseline results with one command.
 
 ### Week 1 Done
 
-```
-Data
-→ Factor
-→ Research
-→ Portfolio
-→ Backtest
-→ Metrics
-```
+- The full Data → Factor → Research → Portfolio → Backtest → Metrics pipeline runs correctly.
+- Critical timing and accounting behavior is tested.
 
-完整可运行。
+## Week 2 — Resume-Ready MVP
 
----
+Goal: make the baseline credible, reproducible, and presentable.
 
-# Week 2 — Resume-Ready MVP
+### Day 8 — Data Quality
 
-目标：
+- Add missing, duplicate, and invalid-data checks.
+- Document adjustment and suspension rules.
 
-> **从“能跑”变成“可信、能写简历”。**
-> 
+### Day 9 — Research Robustness
 
-## Day 8 — Data Quality
+- Analyze factor decay and multiple forward horizons.
+- Check result stability.
 
-- 补 missing / duplicate / invalid data 校验。
-- 明确 adjustment、停牌等处理规则。
+### Day 10 — Out-of-Sample
 
-## Day 9 — Research Robustness
+- Add chronological train / validation / test splits.
+- Document controls for overfitting and data snooping.
 
-- factor decay、不同 forward horizon。
-- 检查结果稳定性。
+### Day 11 — Cost Analysis
 
-## Day 10 — Out-of-Sample
+- Run transaction-cost and slippage sensitivity analysis.
+- Measure the effect of turnover on returns.
 
-- 做时间 train / validation / test。
-- 理解并控制 overfitting。
+### Day 12 — Factor Combination
 
-## Day 11 — Cost Analysis
+- Combine only the three MVP factors using simple rank or z-score methods.
+- Do not introduce ML or additional factors.
 
-- transaction cost / slippage sensitivity。
-- 分析 turnover 对收益的影响。
+### Day 13 — Engineering Cleanup
 
-## Day 12 — Factor Combination
+- Refine APIs, configuration, logging, and tests.
+- Verify reproducible runs.
 
-- 做简单 rank / z-score 多因子组合。
-- 不引入 ML。
+### Day 14 — Resume Ready
 
-## Day 13 — Engineering Cleanup
-
-- 清理 API、config、logging、tests。
-- 保证实验稳定复现。
-
-## Day 14 — Resume Ready
-
-- README、架构图、结果、limitations。
-- 写第一版简历 bullets 和项目介绍。
+- Complete the README, architecture diagram, results, and limitations.
+- Draft resume bullets and the project summary.
 
 ### Week 2 Done
 
-项目可以正式：
+- Results are reproducible and supported by data-quality, robustness, out-of-sample, and cost analysis.
+- The repository is ready for GitHub presentation, resume use, and an interview walkthrough.
 
-**写简历 + GitHub 展示 + 面试讲。**
+## Week 3 — Performance & Depth
 
----
+Goal: build genuine Quant Developer technical depth.
 
-# Week 3 — Performance & Depth
+### Day 15 — Profiling
 
-目标：
+- Identify CPU and memory bottlenecks.
+- Record a reproducible baseline benchmark.
 
-> **增加真正的 QD 技术深度。**
-> 
+### Day 16 — Python Optimization
 
-## Day 15 — Profiling
+- Optimize a measured bottleneck with appropriate Python, NumPy, vectorization, or caching techniques.
+- Compare correctness and performance before and after.
 
-- 找 CPU / memory bottleneck。
-- 保存 baseline benchmark。
+### Day 17 — C++ Integration
 
-## Day 16 — Python Optimization
+- Select a real remaining hot path only if profiling justifies C++.
+- Implement it with C++17 and pybind11, or document why C++ is not warranted.
 
-- NumPy/vectorization/cache 等优化。
-- 测优化前后性能。
+### Day 18 — Benchmark
 
-## Day 17 — C++ Integration
+- Compare baseline Python, optimized Python, and C++ when applicable.
+- Explain performance and maintenance trade-offs.
 
-- 选择一个真实 hot path。
-- 用 C++17 + pybind11 实现。
+### Day 19 — Bias Deep Dive
 
-## Day 18 — Benchmark
+- Audit look-ahead, survivorship, and overfitting risks.
+- Connect each risk to concrete project behavior.
 
-- Python vs optimized Python vs C++。
-- 分析优化 trade-off。
+### Day 20 — Quant Deep Dive
 
-## Day 19 — Bias Deep Dive
+- Deepen understanding of IC, factor decay, Sharpe, turnover, and drawdown.
+- Prepare clear explanations of formulas and intuition.
 
-- 系统复习 look-ahead、survivorship、overfitting 等。
-- 对照项目找真实案例。
+### Day 21 — Project Mock
 
-## Day 20 — Quant Deep Dive
-
-- 深挖 IC、factor decay、Sharpe、turnover、drawdown。
-- 能解释公式和直觉。
-
-## Day 21 — Project Mock
-
-- 完整做一次项目 deep dive。
-- 找出知识和设计薄弱点。
+- Conduct a full project deep dive.
+- Identify and close important design or knowledge gaps.
 
 ### Week 3 Done
 
-至少形成：
+- The project supports one quant research story, one correctness story, and one evidence-based performance story.
+- Any C++ work is justified by profiling and verified against Python results.
 
-**一个 quant research story + 一个 correctness story + 一个 performance/C++ story。**
+## Week 4 — Interview Conversion
 
----
+Goal: freeze scope and convert the project into interview-ready material.
 
-# Week 4 — Interview Conversion
+### Day 22 — Scope Freeze
 
-目标：
+- Stop adding major features.
+- Fix only important bugs, correctness issues, and presentation gaps.
 
-> **停止扩项目，把成果转换成面试能力。**
-> 
+### Day 23 — Architecture Story
 
-## Day 22 — Scope Freeze
+- Prepare the architecture walkthrough.
+- Explain module boundaries and design trade-offs.
 
-- 不再新增大功能。
-- 只修关键 bug 和 correctness。
+### Day 24 — Quant Story
 
-## Day 23 — Architecture Story
+- Practice the factor → signal → position → PnL narrative.
+- Explain research and backtest results.
 
-- 准备项目架构讲解。
-- 能解释各模块设计取舍。
+### Day 25 — Correctness Story
 
-## Day 24 — Quant Story
+- Prepare for questions about timing, bias, costs, and data quality.
 
-- 熟练讲 factor → signal → position → PnL。
-- 能解释实验结果。
+### Day 26 — Performance Story
 
-## Day 25 — Correctness Story
+- Present the profiling → optimization → benchmark sequence, including C++ only if used.
 
-- 准备 timing、bias、cost、data quality 追问。
+### Day 27 — Resume / GitHub Final
 
-## Day 26 — Performance Story
+- Finalize resume bullets.
+- Polish the README and final results.
 
-- 准备 profiling → optimization → C++ → benchmark 故事。
+### Day 28 — Full Mock
 
-## Day 27 — Resume / GitHub Final
+- Run a complete Quant Developer project interview simulation.
+- Finalize the project question bank.
 
-- 定稿简历 bullets。
-- 精简 README 和最终结果。
+### Week 4 Done
 
-## Day 28 — Full Mock
-
-- 完整模拟 QD 项目面试。
-- 整理最终项目题库。
-
----
-
-# 六、四周核心节奏
-
-```
-Week 1：跑通
-Week 2：做可信
-Week 3：做深入
-Week 4：转化成面试能力
-```
-
-如果真实面试反馈与计划冲突：
-
-> **面试反馈优先，但不轻易扩大项目 scope。**
-> 
-
-以后每次同步只需要告诉我：
-
-```
-Day X
-
-完成：
-问题：
-结果：
-不理解：
-```
-
-我们直接基于这个大纲继续往下推进。
+- The repository and resume materials are final and scope-frozen.
+- A clear 10–30 minute project deep dive covers architecture, quant research, correctness, and performance.
