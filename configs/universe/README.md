@@ -1,15 +1,11 @@
 # Frozen Universe Snapshots
 
-Generate the Week 1 CSI 300 snapshot manually:
+手动生成 Week 1 CSI300 snapshot：
 
 ```bash
 uv run python scripts/snapshot_csi300_universe.py
 ```
 
-Commit the resulting `csi300_<snapshot_date>.csv` and pass that exact file to the
-bulk downloader. Do not resolve current constituents during downstream research or
-backtests.
+提交生成的 `csi300_<snapshot_date>.csv`，并将该文件的准确路径传给 bulk downloader。Downstream research 和 backtest 不得在 runtime 解析 current constituents。
 
-These snapshots contain current membership as of their recorded source date. They
-are not point-in-time historical universes and therefore introduce survivorship
-and membership bias when used over earlier price history.
+Snapshot 包含其记录的 source date 当日的 current membership，不是 point-in-time historical universe。因此，用它覆盖更早的价格历史会引入 survivorship bias（幸存者偏差）和 membership bias。

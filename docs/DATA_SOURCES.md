@@ -1,86 +1,51 @@
-<!-- docs/DATA_SOURCES.md -->
-# Day 1 Data-Source Review
+# Day 1 Data Source Review
 
-AlphaForge needs daily A-share OHLCV for roughly 100–300 stocks over five years.
-The MVP should keep acquisition replaceable and convert source-specific output to
-the canonical contract before any downstream use.
+AlphaForge 需要约 100–300 只 A 股、约五年的日频 OHLCV。MVP 的数据获取层应可替换；任何 source-specific output（数据源特定输出）都必须先转换为 canonical schema，再提供给下游模块。
 
 | Source | Access | Daily OHLCV and adjustment | MVP trade-off |
 | --- | --- | --- | --- |
-| [AkShare / Sina](https://github.com/akfamily/akshare/blob/main/docs/data/stock/stock.md) | No account or token | `stock_zh_a_daily` supports daily history and qfq/hfq prices | Current MVP primary source and already a project dependency. Frequent requests may be rate-limited or temporarily IP-blocked. |
-| [Tushare Pro](https://tushare.pro/document/1?doc_id=27) | Account and token; some APIs use points-based permissions | Structured daily history; [adjustment factors](https://tushare.pro/document/2?doc_id=28) and qfq/hfq via `pro_bar` | More explicit data API and identifiers, but token, permissions, and adjustment workflow add avoidable Day 1 setup. |
-| [BaoStock](https://baostock.com/) | No registration is required for the data platform | Historical daily bars and documented adjustment factors | Simple free fallback, but would add another dependency and offers no clear MVP advantage over the dependency already selected. |
+| [AkShare / Sina](https://github.com/akfamily/akshare/blob/main/docs/data/stock/stock.md) | 无账号或 token | `stock_zh_a_daily` 支持日频历史和 qfq / hfq 价格 | 当前 MVP primary source，且已是项目依赖。频繁请求可能受到 rate limit 或临时 IP 封禁。 |
+| [Tushare Pro](https://tushare.pro/document/1?doc_id=27) | 需要账号和 token；部分 API 采用积分权限 | 提供结构化日频历史；[adjustment factor](https://tushare.pro/document/2?doc_id=28) 以及 `pro_bar` 的 qfq / hfq | 数据 API 和标识符更明确，但 token、权限和复权流程会增加不必要的 Day 1 配置。 |
+| [BaoStock](https://baostock.com/) | 数据平台无需注册 | 提供历史日线和有文档说明的 adjustment factor | 可作为简单、免费的 fallback，但会引入额外依赖，相比当前数据源没有明显的 MVP 优势。 |
 
 ## Recommendation
 
-Use AkShare's Sina-backed `stock_zh_a_daily` for the current Day 1 MVP. It needs
-no credentials, supports adjusted prices, and has been manually verified in the
-current network environment. The earlier EastMoney-backed `stock_zh_a_hist`
-repeatedly failed because its upstream endpoint closed connections in this
-environment. Sina is also an upstream public interface: AkShare warns that
-frequent requests may trigger temporary IP blocking, so later acquisition must
-use a deliberately conservative request pattern.
+当前 Day 1 MVP 使用 AkShare 的 Sina-backed `stock_zh_a_daily`。该接口不需要 credentials、支持 adjusted prices，并已在当前网络环境中人工验证。此前 EastMoney-backed `stock_zh_a_hist` 因上游 endpoint 反复关闭连接而不可用。Sina 同样是上游公共接口；AkShare 提示频繁请求可能触发临时 IP blocking，因此批量获取必须采用保守的 request pattern。
 
 ## MVP Data Semantics
 
-- AlphaForge MVP canonical OHLC prices are fixed to back-adjusted (`hfq`) prices.
-  The adapter applies this contract internally rather than exposing adjustment
-  as a caller option.
-- Canonical `volume` is measured in shares. Sina's `stock_zh_a_daily` already
-  reports shares, so the adapter performs no unit scaling.
-- Week 1 uses a frozen static universe. It is intentionally simpler than a
-  point-in-time historical constituent universe.
-- The static universe creates survivorship bias: results may overstate historical
-  performance by excluding securities that delisted or left the chosen universe.
-  This limitation must be disclosed in research and backtest results.
+- AlphaForge MVP 的 canonical OHLC price 固定为后复权（`hfq`）。adapter 内部执行该 contract，不向调用方开放 adjustment 选项。
+- Canonical `volume` 单位为 shares。Sina `stock_zh_a_daily` 已返回 shares，因此 adapter 不做单位换算。
+- Week 1 使用 frozen static universe，刻意保持比 point-in-time historical constituent universe 更简单。
+- Static universe 会引入 survivorship bias（幸存者偏差）：由于排除了已退市或已离开该 universe 的证券，历史表现可能被高估。research 和 backtest results 必须披露这一 limitation。
 
-These choices are ingestion provenance, not additional columns in the seven-column
-canonical OHLCV frame. Missing trading-date rows, including suspended days, remain
-missing rather than being forward-filled.
+这些约定属于 ingestion provenance，不会成为七列 canonical OHLCV frame 的额外 columns。缺失的 trading-date rows（包括停牌日）保持缺失，不做 forward fill。
 
-## Frozen CSI 300 Universe
+## Frozen CSI300 Universe
 
-Week 1 uses one committed CSI 300 snapshot rather than resolving membership at
-runtime. `scripts/snapshot_csi300_universe.py` calls AkShare's
-`index_stock_cons_csindex(symbol="000300")` only to create the snapshot. It
-requires exactly 300 unique constituents, converts codes to AlphaForge symbols,
-sorts them by symbol, and writes:
+Week 1 使用一份已提交的 CSI300 snapshot，而不是在 runtime 解析 constituents。`scripts/snapshot_csi300_universe.py` 只在创建 snapshot 时调用 AkShare 的 `index_stock_cons_csindex(symbol="000300")`。脚本要求恰好 300 个 unique constituents，将代码转换为 AlphaForge symbols，按 symbol 排序，并写入：
 
 ```text
 configs/universe/csi300_<snapshot_date>.csv
 ```
 
-The CSV contains `snapshot_date`, `symbol`, and the source-provided `name`. The
-date is AkShare/CSIndex's constituent-file date. After generation, the CSV is a
-static input that should be committed to Git; bulk acquisition and all downstream
-research must read it and must not dynamically request current membership.
+CSV 包含 `snapshot_date`、`symbol` 和数据源提供的 `name`。日期取自 AkShare / CSIndex constituent file。生成后，该 CSV 是需要提交到 Git 的 static input；bulk acquisition 及所有 downstream research 都必须读取它，不得动态请求 current membership。
 
-Generate or deliberately refresh a snapshot manually with:
+手动生成或明确刷新 snapshot：
 
 ```bash
 uv run python scripts/snapshot_csi300_universe.py
 ```
 
-This frozen current-membership snapshot is **not** a point-in-time historical
-membership dataset. Applying it across the full price history creates both
-survivorship and membership bias. PIT universe support is outside the Week 1 MVP,
-so research and backtest results must disclose this limitation.
+这份 frozen current-membership snapshot **不是** point-in-time universe。将它用于完整历史价格会同时引入 survivorship bias 和 membership bias。PIT universe support 不属于 Week 1 MVP，因此 research 和 backtest results 必须披露这一 limitation。
 
 ## Rate-Controlled Bulk Acquisition
 
-`scripts/download_market_data.py` reads only the frozen CSV and invokes the
-existing `fetch_akshare_daily_ohlcv` adapter sequentially. Requests are separated
-by a configurable delay of 2.0 seconds by default; there is no concurrency or
-retry framework. This deliberately low-frequency request pattern reduces the risk
-of Sina temporarily blocking the client.
+`scripts/download_market_data.py` 只读取 frozen CSV，并按顺序调用现有的 `fetch_akshare_daily_ohlcv` adapter。默认 request interval 为可配置的 2.0 秒；不使用 concurrency 或 retry framework。保守的低频 request pattern 用于降低 Sina 临时封禁 client 的风险。
 
-Each failed symbol and its error reason are logged, later symbols still run, and
-the final summary reports requested, successful, failed, and row counts. If any
-symbol fails, the script retains successful rows in its diagnostic result but does
-not write the official output Parquet and exits non-zero. The canonical downstream
-dataset is published only when every requested symbol succeeds.
+每个失败 symbol 及其 error reason 都会写入 log；后续 symbols 继续执行；final summary 报告 requested、successful、failed 和 row counts。如果任何 symbol 失败，脚本会在 diagnostic result 中保留成功 rows，但不会写入 official output Parquet，并以非零状态退出。只有全部 requested symbols 成功时才发布 canonical downstream dataset。
 
-Example smoke acquisition:
+Small-scale acquisition 示例：
 
 ```bash
 uv run python scripts/download_market_data.py \
@@ -92,26 +57,12 @@ uv run python scripts/download_market_data.py \
 
 ## Processed Dataset
 
-The MVP writes one consolidated file at
-`data/processed/ohlcv_hfq.parquet`. Before persistence, all successful frames are
-concatenated and passed through canonical normalization and validation. Rows are
-unique on `(date, symbol)` and sorted by `date, symbol`. The file is read back and
-strictly revalidated, including canonical dtypes, after writing.
+MVP 将 consolidated dataset 写入 `data/processed/ohlcv_hfq.parquet`。持久化前，所有成功 frames 会被合并，并经过 canonical normalization 和 validation。rows 在 `(date, symbol)` 上唯一，并按 `date, symbol` 排序。写入后重新读取并执行 strict validation，包括检查 canonical dtypes。
 
-This Parquet file is the canonical downstream dataset. Its OHLC values are `hfq`
-research-adjusted prices, not the historical nominal prices at which shares
-actually traded. Canonical volume remains measured in shares.
+该 Parquet file 是 canonical downstream dataset。其 OHLC values 是用于 research 的 `hfq` adjusted prices，不是当时实际成交的 historical nominal prices。Canonical volume 单位保持为 shares。
 
-## Canonical Market-Data Loading
+## Canonical Market Data Loading
 
-`MarketDataLoader` reads one canonical Parquet dataset and optionally filters it
-by inclusive `start_date`, inclusive `end_date`, and canonical `symbols`. It
-returns the seven canonical columns sorted by `date, symbol` and validates both
-the source dataset and the returned frame.
+`MarketDataLoader` 读取单个 canonical Parquet dataset，并可按 inclusive `start_date`、inclusive `end_date` 和 canonical `symbols` 过滤。返回结果包含七个 canonical columns，按 `date, symbol` 排序，并对 source dataset 和结果 frame 都执行 validation。
 
-Requested symbols must be unique and use exact AlphaForge canonical form. If any
-requested symbol is absent from the complete dataset, loading raises a clear
-error rather than silently returning a partial symbol selection. A valid filter
-whose date window contains no observations returns a validated canonical empty
-DataFrame. The loader never creates calendar rows, fills suspensions, or changes
-OHLCV values.
+Requested symbols 必须唯一，并使用完全一致的 AlphaForge canonical form。如果任何 requested symbol 不存在于完整 dataset，loader 会明确报错，不会静默返回 partial selection。合法 filter 的 date window 没有 observations 时，返回 validated canonical empty DataFrame。loader 不创建 calendar rows、不填充停牌日，也不修改 OHLCV values。
