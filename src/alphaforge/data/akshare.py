@@ -44,6 +44,16 @@ def _exchange_for_a_share_code(code: str) -> str:
     raise ValueError(f"unsupported A-share symbol prefix: {code}")
 
 
+def a_share_code_to_canonical_symbol(code: str) -> str:
+    """Convert a six-digit mainland A-share code to canonical form."""
+
+    if not isinstance(code, str):
+        raise TypeError("code must be a string")
+    normalized = code.strip()
+    exchange = _exchange_for_a_share_code(normalized)
+    return f"{normalized}.{exchange}"
+
+
 def akshare_to_canonical_symbol(symbol: str) -> str:
     """Convert a Sina-form AkShare symbol to canonical form."""
 

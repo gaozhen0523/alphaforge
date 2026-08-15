@@ -114,7 +114,6 @@ New scope must clearly improve Quant Developer interview value before it is acce
 
 ## Python environment:
 - This project uses uv for dependency and environment management.
-- Run Python tools through `uv run`.
+- Codex cannot run `uv` because of sandbox/permission restrictions, do not modify or recreate the project environment. Report the limitation and provide the exact `uv run ...` command for the user to execute locally.
 - Do not use pip directly unless explicitly requested.
 - Do not create or use an alternative project environment.
-- If Codex cannot run `uv` because of sandbox/permission restrictions, do not modify or recreate the project environment. Report the limitation and provide the exact `uv run ...` command for the user to execute locally.
