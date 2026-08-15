@@ -9,9 +9,9 @@ from typing import Final
 import akshare as ak
 import pandas as pd
 
-from .akshare import (
+from .symbols import (
     a_share_code_to_canonical_symbol,
-    canonical_to_akshare_symbol,
+    validate_canonical_symbol,
 )
 
 CSI300_INDEX_CODE: Final[str] = "000300"
@@ -147,7 +147,7 @@ def load_universe_symbols(path: Path, limit: int | None = None) -> list[str]:
     validated: list[str] = []
     for symbol in symbols:
         try:
-            canonical_to_akshare_symbol(str(symbol))
+            validate_canonical_symbol(str(symbol))
         except (TypeError, ValueError) as exc:
             raise UniverseSnapshotError(
                 f"invalid canonical universe symbol: {symbol}"

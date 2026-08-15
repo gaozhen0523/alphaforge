@@ -88,6 +88,14 @@ def test_invalid_symbol_format_is_rejected() -> None:
         normalize_ohlcv(frame)
 
 
+def test_symbol_with_wrong_exchange_is_rejected() -> None:
+    frame = raw_frame().iloc[[0]].copy()
+    frame.loc[:, "symbol"] = "600000.SZ"
+
+    with pytest.raises(OHLCVValidationError, match="six digits"):
+        normalize_ohlcv(frame)
+
+
 def test_missing_values_are_rejected_instead_of_filled() -> None:
     frame = raw_frame().iloc[[0]].copy()
     frame.loc[:, "close"] = np.nan

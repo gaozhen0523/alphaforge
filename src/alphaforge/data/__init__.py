@@ -3,7 +3,6 @@
 
 from .akshare import (
     AkShareUpstreamDataError,
-    a_share_code_to_canonical_symbol,
     akshare_to_canonical_symbol,
     canonical_to_akshare_symbol,
     fetch_akshare_daily_ohlcv,
@@ -14,6 +13,7 @@ from .bulk import (
     download_daily_ohlcv,
     write_canonical_parquet,
 )
+from .loader import MarketDataLoader
 from .schema import (
     CANONICAL_OHLCV_COLUMNS,
     CANONICAL_OHLCV_DTYPES,
@@ -21,6 +21,7 @@ from .schema import (
     normalize_ohlcv,
     validate_ohlcv,
 )
+from .symbols import a_share_code_to_canonical_symbol, validate_canonical_symbol
 from .universe import (
     CSI300_INDEX_CODE,
     UniverseSnapshotError,
@@ -37,6 +38,7 @@ __all__ = [
     "AkShareUpstreamDataError",
     "BulkDownloadResult",
     "DownloadFailure",
+    "MarketDataLoader",
     "OHLCVValidationError",
     "UniverseSnapshotError",
     "a_share_code_to_canonical_symbol",
@@ -49,6 +51,7 @@ __all__ = [
     "normalize_ohlcv",
     "normalize_csi300_constituents",
     "validate_ohlcv",
+    "validate_canonical_symbol",
     "write_canonical_parquet",
     "write_csi300_snapshot",
 ]

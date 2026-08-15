@@ -101,3 +101,17 @@ strictly revalidated, including canonical dtypes, after writing.
 This Parquet file is the canonical downstream dataset. Its OHLC values are `hfq`
 research-adjusted prices, not the historical nominal prices at which shares
 actually traded. Canonical volume remains measured in shares.
+
+## Canonical Market-Data Loading
+
+`MarketDataLoader` reads one canonical Parquet dataset and optionally filters it
+by inclusive `start_date`, inclusive `end_date`, and canonical `symbols`. It
+returns the seven canonical columns sorted by `date, symbol` and validates both
+the source dataset and the returned frame.
+
+Requested symbols must be unique and use exact AlphaForge canonical form. If any
+requested symbol is absent from the complete dataset, loading raises a clear
+error rather than silently returning a partial symbol selection. A valid filter
+whose date window contains no observations returns a validated canonical empty
+DataFrame. The loader never creates calendar rows, fills suspensions, or changes
+OHLCV values.

@@ -10,6 +10,7 @@ import akshare as ak
 import pandas as pd
 
 from .schema import normalize_ohlcv
+from .symbols import a_share_code_to_canonical_symbol, validate_canonical_symbol
 
 _SINA_PRICE_ADJUSTMENT: Final[str] = "hfq"
 _SINA_DAILY_COLUMNS: Final[tuple[str, ...]] = (
@@ -23,35 +24,10 @@ _SINA_DAILY_COLUMNS: Final[tuple[str, ...]] = (
 _SINA_SYMBOL_PATTERN: Final[re.Pattern[str]] = re.compile(
     r"^(?P<exchange>sh|sz|bj)(?P<code>\d{6})$"
 )
-_CANONICAL_SYMBOL_PATTERN: Final[re.Pattern[str]] = re.compile(
-    r"^(?P<code>\d{6})\.(?P<exchange>SH|SZ|BJ)$"
-)
 
 
 class AkShareUpstreamDataError(RuntimeError):
     """Raised when AkShare returns no usable upstream market data."""
-
-
-def _exchange_for_a_share_code(code: str) -> str:
-    if not re.fullmatch(r"\d{6}", code):
-        raise ValueError("A-share code must contain exactly six digits")
-    if code.startswith("6"):
-        return "SH"
-    if code.startswith(("0", "3")):
-        return "SZ"
-    if code.startswith(("4", "8", "92")):
-        return "BJ"
-    raise ValueError(f"unsupported A-share symbol prefix: {code}")
-
-
-def a_share_code_to_canonical_symbol(code: str) -> str:
-    """Convert a six-digit mainland A-share code to canonical form."""
-
-    if not isinstance(code, str):
-        raise TypeError("code must be a string")
-    normalized = code.strip()
-    exchange = _exchange_for_a_share_code(normalized)
-    return f"{normalized}.{exchange}"
 
 
 def akshare_to_canonical_symbol(symbol: str) -> str:
@@ -66,12 +42,13 @@ def akshare_to_canonical_symbol(symbol: str) -> str:
 
     code = match.group("code")
     exchange = match.group("exchange").upper()
-    expected_exchange = _exchange_for_a_share_code(code)
+    canonical = a_share_code_to_canonical_symbol(code)
+    expected_exchange = canonical.rsplit(".", maxsplit=1)[1]
     if exchange != expected_exchange:
         raise ValueError(
             f"symbol {normalized} has exchange {exchange}; expected {expected_exchange}"
         )
-    return f"{code}.{exchange}"
+    return canonical
 
 
 def canonical_to_akshare_symbol(symbol: str) -> str:
@@ -80,17 +57,8 @@ def canonical_to_akshare_symbol(symbol: str) -> str:
     if not isinstance(symbol, str):
         raise TypeError("symbol must be a string")
     normalized = symbol.strip().upper()
-    match = _CANONICAL_SYMBOL_PATTERN.fullmatch(normalized)
-    if match is None:
-        raise ValueError("canonical symbol must use six digits plus .SH, .SZ, or .BJ")
-
-    code = match.group("code")
-    exchange = match.group("exchange")
-    expected_exchange = _exchange_for_a_share_code(code)
-    if exchange != expected_exchange:
-        raise ValueError(
-            f"symbol {normalized} has exchange {exchange}; expected {expected_exchange}"
-        )
+    validate_canonical_symbol(normalized)
+    code, exchange = normalized.split(".")
     return f"{exchange.lower()}{code}"
 
 

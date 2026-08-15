@@ -8,12 +8,13 @@ other real market-data condition that must remain explicit downstream.
 
 from __future__ import annotations
 
-import re
 from types import MappingProxyType
 from typing import Final
 
 import numpy as np
 import pandas as pd
+
+from .symbols import validate_canonical_symbol
 
 CANONICAL_OHLCV_COLUMNS: Final[tuple[str, ...]] = (
     "date",
@@ -39,7 +40,6 @@ CANONICAL_OHLCV_DTYPES = MappingProxyType(
 
 _PRICE_COLUMNS: Final[tuple[str, ...]] = ("open", "high", "low", "close")
 _NUMERIC_COLUMNS: Final[tuple[str, ...]] = (*_PRICE_COLUMNS, "volume")
-_SYMBOL_PATTERN: Final[re.Pattern[str]] = re.compile(r"^\d{6}\.(?:SH|SZ|BJ)$")
 
 
 class OHLCVValidationError(ValueError):
@@ -126,10 +126,13 @@ def validate_ohlcv(frame: pd.DataFrame) -> None:
     if frame.loc[:, list(CANONICAL_OHLCV_COLUMNS)].isna().any().any():
         raise OHLCVValidationError("canonical OHLCV values must not be missing")
 
-    if not frame["symbol"].str.fullmatch(_SYMBOL_PATTERN).all():
+    try:
+        for symbol in frame["symbol"].unique():
+            validate_canonical_symbol(str(symbol))
+    except (TypeError, ValueError) as exc:
         raise OHLCVValidationError(
-            "symbol must use six digits plus .SH, .SZ, or .BJ"
-        )
+            "symbol must use six digits plus the valid .SH, .SZ, or .BJ suffix"
+        ) from exc
     if not frame["date"].equals(frame["date"].dt.normalize()):
         raise OHLCVValidationError("date values must be normalized to midnight")
 
