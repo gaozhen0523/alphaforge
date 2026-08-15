@@ -1,3 +1,27 @@
+# C++ / CMake
+cmake-build-*/
+build/
+out/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+build.ninja
+.ninja_deps
+.ninja_log
+compile_commands.json
+
+# Local CMake settings
+CMakeUserPresets.json
+
+# MSVC build artifacts
+*.obj
+*.pdb
+*.ilk
+*.pyd
+
 # PyCharm / JetBrains
 .idea/
 

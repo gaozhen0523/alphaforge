@@ -7,7 +7,15 @@ authors = [
     { name = "gaozhen0523", email = "gaozhen0523@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "akshare>=1.18.91",
+    "matplotlib>=3.11.1",
+    "numpy>=2.5.2",
+    "pandas>=3.0.5",
+    "pyarrow>=25.0.1",
+    "scipy>=1.18.0",
+    "statsmodels>=0.14.6",
+]
 
 [project.scripts]
 alphaforge = "alphaforge:main"
@@ -15,3 +23,8 @@ alphaforge = "alphaforge:main"
 [build-system]
 requires = ["uv_build>=0.12.4,<0.13.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
