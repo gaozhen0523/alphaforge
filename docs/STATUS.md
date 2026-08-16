@@ -34,6 +34,7 @@ Day 3 — Factor Research
 - Step 4B daily quantile returns：先按 date × quantile 对有效 forward returns 计算 cross-sectional equal-weight arithmetic mean；输出保留固定 Q1...Qn schema，缺失组合保持 NaN。
 - Step 4C quantile return summary：对 daily quantile return matrix 按时间计算 arithmetic mean；top-minus-bottom 先逐日配对相减再求均值，不使用独立均值之差。
 - Step 5 factor correlation：按 date 对 raw factors 计算 pairwise-valid Spearman correlation matrix，再沿时间对 daily matrices 等权求 arithmetic mean；NaN 不填零。
+- Production factor research runner：已新增 `scripts/run_factor_research.py`，串联 production loader、三个 baseline factors、1-day forward return、IC/ICIR、quantile returns 和 factor correlation；真实数值结果等待在可用的 `uv` 环境中运行。
 
 ## Day 2 — Factors: DONE
 
@@ -51,4 +52,4 @@ Day 3 — Factor Research
 
 ## Next
 
-- Day 3 — Factor Research：运行第一版 factor research results。
+- Day 3 — Factor Research：本地运行 production runner 并记录第一版真实 research results。
