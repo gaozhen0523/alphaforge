@@ -6,7 +6,7 @@ Week 1 — End-to-End MVP
 
 ## Current Day
 
-Day 3 — Factor Research: DONE
+Day 4 — Portfolio: DONE
 
 ## Day 1 — Data: DONE
 
@@ -73,14 +73,21 @@ volatility_20d      0.164410    -0.030020        1.000000
 - Valid IC days 与 timing 完全一致：Momentum / Volatility `1212 - 20 - 1 = 1191`；Reversal `1212 - 5 - 1 = 1206`。未发现 factor / forward-return alignment bug。
 - 不做 parameter tuning，不修改 baseline definitions，不把 quantile forward return 当作 tradable strategy PnL；保持 `Correctness > Return`。
 
+## Day 4 — Portfolio: DONE
+
+- Implemented：`factor → signal → target weights`；baseline 使用 `momentum_20d`，higher factor is better。
+- Weekly rebalance：每个 calendar week 中 dataset 最后一个 global trading date；所有 symbols 共用同一套 decision dates，Friday 缺失时使用该周最后一个实际 trading date。
+- Selection / weighting：每个 rebalance date 独立使用 Day 3 quantile semantics；factor 非 NaN 的 Q5 stocks 做 long-only equal weight，其他 stocks 为 0。
+- Carry forward：signal / target weights 只在 weekly decision 更新，两个 decision dates 之间保持当前 target；首个 decision 前为 0。
+- Timing：`factor(t) → signal / target(t)`，Day 4 不做 execution shift；target weight 是目标配置，不是 actual position，也不表示每日交易维持 equal weight。
+- Day 5 才处理：`signal(t) → execution / position(t+1)`、weight drift、turnover、transaction cost、slippage、return 和 PnL。
+
 ## Known Limitations
 
 - Frozen current-membership CSI300 universe 存在 survivorship / membership bias。
 - Unbalanced panel 的 rolling/forward horizon 使用 available observations，而非 strict exchange-calendar sessions。
 - Data provider 可能将当前 ticker identifier 回填到历史 observations。
 
-## Next — Day 4: Portfolio
+## Next — Day 5: Backtest
 
-实现完整的 `factor → signal → target weights` flow：weekly rebalance、long only、top quantile、equal weight。
-
-Day 4 只负责 signal / selection 和 target weights；execution、transaction cost、slippage、return / PnL 留给 Day 5。
+实现完整的 `position → turnover → cost → return → PnL` flow，并明确执行 `signal(t) → position(t+1)`，避免 look-ahead bias。
