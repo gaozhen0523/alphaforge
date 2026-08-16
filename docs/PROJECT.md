@@ -57,10 +57,19 @@ Market Data → Factor → Signal → Portfolio → Execution → PnL → Metric
 
 ### Portfolio
 
-- Weekly rebalance
-- Long only
-- Top quantile
-- Equal weight
+- Baseline factor：`momentum_20d`，higher factor is better
+- Weekly rebalance：每个 calendar week 最后一个 global trading date
+- Long only、top quintile / Q5、equal weight
+- Portfolio Q5 复用 Research Q5 quantile semantics；factor NaN 不参与 selection，ties 不强制拆分
+- Portfolio panel：完整 `global date × symbol`；缺失 observation 的 factor 保留 NaN
+
+Portfolio timing boundary：
+
+```text
+factor(t) → signal(t) → target_weight(t)
+```
+
+`signal` / `target_weight` 只在 weekly rebalance decision 更新，其余日期 carry forward。`target_weight` 是当前目标配置，不是 actual portfolio weight；carry forward 不表示每日重新交易维持 equal weight。Execution、actual position、weight drift、turnover、cost、return 和 PnL 属于 Backtest layer。
 
 ### Backtest
 

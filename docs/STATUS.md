@@ -75,12 +75,50 @@ volatility_20d      0.164410    -0.030020        1.000000
 
 ## Day 4 — Portfolio: DONE
 
-- Implemented：`factor → signal → target weights`；baseline 使用 `momentum_20d`，higher factor is better。
-- Weekly rebalance：每个 calendar week 中 dataset 最后一个 global trading date；所有 symbols 共用同一套 decision dates，Friday 缺失时使用该周最后一个实际 trading date。
-- Selection / weighting：每个 rebalance date 独立使用 Day 3 quantile semantics；factor 非 NaN 的 Q5 stocks 做 long-only equal weight，其他 stocks 为 0。
-- Carry forward：signal / target weights 只在 weekly decision 更新，两个 decision dates 之间保持当前 target；首个 decision 前为 0。
-- Timing：`factor(t) → signal / target(t)`，Day 4 不做 execution shift；target weight 是目标配置，不是 actual position，也不表示每日交易维持 equal weight。
-- Day 5 才处理：`signal(t) → execution / position(t+1)`、weight drift、turnover、transaction cost、slippage、return 和 PnL。
+- Implemented：`Factor → Signal → Target Weights`；baseline 使用 `momentum_20d`，higher factor is better，long only、top quintile / Q5、equal weight。
+- Core API：`build_long_only_top_quantile_portfolio(df, factor_col, n_quantiles=5)`。
+- Weekly rebalance：使用 global market trading dates；每个 calendar week 最后一个实际 trading date 是 decision date，所有 symbols 共用同一套 schedule，不按每个 symbol 每 5 个 observations 重平衡。
+- Cross-sectional selection：每个 decision date 独立复用 Day 3 quantile semantics；factor NaN 不参与 selection；ties 不强制拆分，因此 selected count 不要求严格等于 20%。
+- Target weights：选中 `N` 只股票时各为 `1 / N`，未选中为 0；满足 long-only、selected equal weight 和 active cross-sectional weight sum = 1。
+- Carry forward：`signal` / `target_weight` 只在 weekly decision 重新生成，两个 decision dates 之间保持当前 target；首个有效 target 前为 0。
+- Portfolio panel：构造完整 `global date × symbol` panel；缺失 `(date, symbol)` observation 的 factor 为 NaN，并在新的 rebalance 时将其 target 正确归零，而不是延续旧 target。
+- Timing boundary：`factor(t) → signal(t) → target_weight(t)` 到 Day 4 结束；不做 execution shift、turnover、transaction cost、slippage、return 或 PnL。
+- `target_weight != actual portfolio weight`；carry-forward target 仅表示目标未改变，不表示每日重新交易维持 equal weight。Actual position、weight drift 和 execution 属于 Day 5。
+
+Production runner：
+
+```text
+uv run python scripts/run_portfolio.py
+```
+
+Production sanity：
+
+```text
+rows: 363,600
+symbols: 300
+date range: 2021-01-04 to 2025-12-31
+
+rebalance count: 256
+first rebalance date: 2021-01-08
+last rebalance date: 2025-12-31
+
+selected count on rebalance dates (min/median/max): 0/59/60
+target weight (min/max): 0/0.01851852
+negative weight count: 0
+active cross-sectional weight sum (min/max): 1/1
+non-unit active dates: 0
+```
+
+Portfolio panel 为 `1,212 trading dates × 300 symbols = 363,600 rows`。Selected count minimum 为 0，来自 `momentum_20d` 初始 lookback 尚未形成有效 factor 的早期 rebalance dates，不是 portfolio bug。
+
+Local tests：
+
+```text
+uv run pytest tests/test_portfolio.py tests/test_quantiles.py tests/test_ranking.py
+38 passed in 0.69s
+```
+
+Tests 覆盖 cross-sectional Q5、global weekly schedule、Friday 缺失、非 rebalance 日不重新选股、portfolio invariants、NaN factor exclusion，以及 symbol 在新 decision date 缺行时 target 正确归零。
 
 ## Known Limitations
 
@@ -90,4 +128,4 @@ volatility_20d      0.164410    -0.030020        1.000000
 
 ## Next — Day 5: Backtest
 
-实现完整的 `position → turnover → cost → return → PnL` flow，并明确执行 `signal(t) → position(t+1)`，避免 look-ahead bias。
+实现完整的 `target(t) → execution / position → weight drift → turnover → cost → return → PnL` flow，并明确 execution timing，避免 look-ahead bias；不得把 forward-filled target 错误解释为 daily rebalance。
