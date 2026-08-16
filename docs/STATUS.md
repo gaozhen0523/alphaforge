@@ -6,7 +6,7 @@ Week 1 — End-to-End MVP
 
 ## Current Day
 
-Day 3 — Factor Research
+Day 3 — Factor Research: DONE
 
 ## Day 1 — Data: DONE
 
@@ -20,21 +20,181 @@ Day 3 — Factor Research
 - Data semantics：price convention = `hfq`；volume unit = shares。
 - Week 1 使用 frozen static CSI300 universe；已明确记录 survivorship / membership bias limitation。
 
-## 当前工作
+## Day 3 — Factor Research: DONE
 
-Day 3 — Factor Research
+今天完成完整的 factor research baseline workflow。
 
-- Step 1 forward return：已实现 `forward_return(t, h) = price(t+h) / price(t) - 1`。
-- Forward horizon 按各 symbol 的 future available observations 计数，不引入 exchange calendar。
-- 计算按 symbol 隔离、按 date 升序执行，并恢复输入 index / row order；insufficient future observations 保留 NaN。
-- Step 2 cross-sectional rank：按 date 对 available stocks 独立计算 percentile rank；NaN 保留，ties 使用 average rank。
-- Step 3A daily IC：按 date 对 raw factor 与 raw forward return 的有效配对 observations 计算 Spearman correlation；不足 `min_obs` 或 correlation 未定义时保留 NaN。
-- Step 3B IC summary / ICIR：基于 non-NaN daily IC 计算 arithmetic mean、sample standard deviation（`ddof=1`）和未年化 ICIR；标准差无定义或为零时 ICIR 保留 NaN。
-- Step 4A quantile assignment：复用 cross-sectional percentile rank，按 `ceil(rank * n_quantiles)` 分组；Q1 为最低 factor，Qn 为最高 factor，ties 不拆分，missing factor 保留 missing quantile。
-- Step 4B daily quantile returns：先按 date × quantile 对有效 forward returns 计算 cross-sectional equal-weight arithmetic mean；输出保留固定 Q1...Qn schema，缺失组合保持 NaN。
-- Step 4C quantile return summary：对 daily quantile return matrix 按时间计算 arithmetic mean；top-minus-bottom 先逐日配对相减再求均值，不使用独立均值之差。
-- Step 5 factor correlation：按 date 对 raw factors 计算 pairwise-valid Spearman correlation matrix，再沿时间对 daily matrices 等权求 arithmetic mean；NaN 不填零。
-- Production factor research runner：已新增 `scripts/run_factor_research.py`，串联 production loader、三个 baseline factors、1-day forward return、IC/ICIR、quantile returns 和 factor correlation；真实数值结果等待在可用的 `uv` 环境中运行。
+### Implemented
+
+已实现并测试：
+
+```text
+compute_forward_return
+cross_sectional_rank
+
+compute_daily_ic
+summarize_ic
+
+assign_quantiles
+compute_quantile_returns
+summarize_quantile_returns
+
+compute_factor_correlation
+```
+
+核心流程：
+
+```text
+Factor
+→ Forward Return
+→ Cross-Sectional Rank
+→ Daily Spearman IC
+→ IC / ICIR
+→ Quantile Analysis
+→ Factor Correlation
+```
+
+### Research Semantics
+
+Forward return：
+
+```text
+forward_return(t, h) = price(t+h) / price(t) - 1
+```
+
+当前 `horizon` 表示 future available observations，而不是 strict exchange-calendar sessions。
+
+Research timing 与 execution timing 明确分离：
+
+```text
+Day 3 Research:
+factor(t) ↔ future return
+
+Later Backtest:
+signal(t) → position(t+1)
+```
+
+IC 是每个 date 独立计算的 cross-sectional Spearman correlation。ICIR 定义为 `mean daily IC / std daily IC`，不 annualize。
+
+Quantiles 使用 `Q1 = lowest factor`、`Q5 = highest factor`。Daily quantile returns 先按 date × quantile 计算 cross-sectional equal-weight mean，再沿时间维度分析。
+
+Top-minus-bottom 先逐日计算 `Q5(t) - Q1(t)`，再求时间均值。
+
+Factor correlation 是 daily cross-sectional Spearman correlation 沿日期的 equal-weight mean，不是将五年 observations pooling 后直接计算。
+
+### Production Research Run
+
+Runner：`scripts/run_factor_research.py`
+
+```text
+uv run python scripts/run_factor_research.py
+```
+
+Production sanity：
+
+```text
+dataset rows: 352,215
+symbol count: 300
+date range: 2021-01-04 ~ 2025-12-31
+forward_return non-null: 351,915
+```
+
+#### Momentum 20d
+
+```text
+valid IC days: 1,191
+
+mean_ic: -0.01432920
+ic_std: 0.22927143
+icir: -0.06249886
+
+q1_mean: 0.00057108
+q2_mean: 0.00039494
+q3_mean: 0.00036988
+q4_mean: 0.00076541
+q5_mean: 0.00086787
+
+top_minus_bottom: 0.00029679
+```
+
+1-step predictive power 很弱，IC 接近 0，quantile profile 不单调，不能认为存在稳定 momentum alpha。
+
+#### Reversal 5d
+
+```text
+valid IC days: 1,206
+
+mean_ic: 0.02155429
+ic_std: 0.20820682
+icir: 0.10352345
+
+q1_mean: 0.00079411
+q2_mean: 0.00049486
+q3_mean: 0.00055488
+q4_mean: 0.00051615
+q5_mean: 0.00058671
+
+top_minus_bottom: -0.00020740
+```
+
+存在小幅 positive rank IC，但 quantile profile 不单调且 top-minus-bottom 为负。属于 weak / noisy reversal evidence，不是稳定 alpha。
+
+#### Volatility 20d
+
+```text
+valid IC days: 1,191
+
+mean_ic: -0.03175493
+ic_std: 0.25518219
+icir: -0.12444022
+
+q1_mean: 0.00043811
+q2_mean: 0.00023851
+q3_mean: 0.00034920
+q4_mean: 0.00069692
+q5_mean: 0.00124019
+
+top_minus_bottom: 0.00080208
+```
+
+Rank IC 为弱负，quantile profile 不单调且 extreme bucket behavior 较明显。IC 与 top-minus-bottom direction 不完全一致；目前没有证据表明存在 correctness bug，不继续增加 Day 3 diagnostics。
+
+#### Factor Correlation
+
+```text
+                momentum_20d  reversal_5d  volatility_20d
+momentum_20d        1.000000    -0.437732        0.164410
+reversal_5d        -0.437732     1.000000       -0.030020
+volatility_20d      0.164410    -0.030020        1.000000
+```
+
+Momentum / Reversal 中等负相关。Volatility 与另外两个 factor 的相关性较弱，提供相对不同的信息维度。
+
+### Correctness Sanity
+
+有效 IC days 与 lookback / forward-return timing 完全一致：
+
+```text
+Momentum / Volatility:
+1212 - 20 - 1 = 1191
+
+Reversal:
+1212 - 5 - 1 = 1206
+```
+
+实际结果完全匹配。Paired observation counts 也与 factor lookback 和 terminal forward-return NaN 对齐，当前没有发现明显 factor / forward-return timing 或 alignment bug。
+
+### Day 3 Final Conclusion
+
+三个基础 factors 在当前 1-step close-to-close forward return 下 predictive power 较弱且 noisy，这是正常且接受的 baseline research result。
+
+- 不做 parameter tuning 来改善结果。
+- 不修改 factor definitions 追求漂亮 IC。
+- 不继续增加 Day 3 diagnostics，除非以后出现明确 correctness evidence。
+- 不把 Day 3 quantile forward return 当成 tradable strategy PnL。
+- Day 3 的成果重点是正确、完整的 factor research workflow。
+
+保持 `Correctness > Return`。
 
 ## Day 2 — Factors: DONE
 
@@ -52,4 +212,16 @@ Day 3 — Factor Research
 
 ## Next
 
-- Day 3 — Factor Research：本地运行 production runner 并记录第一版真实 research results。
+Day 4 — Portfolio
+
+```text
+factor
+→ signal
+→ target weights
+```
+
+范围：Weekly rebalance、long only、top quantile、equal weight。
+
+Day 4 只负责 `signal / selection → target portfolio weights`，不要提前混入 execution、transaction cost、slippage 或 PnL；这些留给 Day 5。
+
+开始 Day 4 时先讲完整 Portfolio flow、明确关键 semantics，再尽量一次 cohesive implementation 并统一 review，不再拆成大量“一函数一次 Codex”的任务。

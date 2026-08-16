@@ -139,6 +139,54 @@ Notebook 只负责研究和可视化，核心逻辑放在 `src/`。
 - data quality
 - factor timing
 
+## Development / Collaboration Workflow
+
+后续开发减少任务过度碎片化。优先先理解完整 Quant 子流程、讲清核心知识和 correctness semantics，再一次实现一组相关 functions + tests 并统一 review。通常每个开发日控制在 1～2 个 cohesive coding batches；只有遇到重要的 correctness 或 architecture boundary 时再拆分。
+
+例如 Day 4 的 `factor → signal → target weights` 应尽量作为完整 Portfolio flow 实现；Day 5 的 `position → turnover → cost → return → PnL` 也应优先整体设计和实现。
+
+### Learning Priority
+
+Quant、流程和设计知识讲解不能减少。重点帮助用户理解并能在面试中解释完整链路：
+
+```text
+Market Data
+→ Factor
+→ Signal
+→ Portfolio
+→ Execution
+→ PnL
+→ Metrics
+```
+
+重点解释每层职责、数学与金融直觉、timing semantics、数据流、bias / leakage 风险、重要 trade-off，以及 Quant Developer 面试可能如何追问。减少对 pandas corner cases、obscure dtype behavior、极少发生的 artificial edge cases 和缺少 Quant correctness 价值的 defensive validation 的强调。
+
+### Engineering Detail Priority
+
+必须认真保护 look-ahead bias、factor / signal / execution timing、symbol/date alignment、cross-sectional vs time-series semantics、forward-return alignment、survivorship / membership bias、data leakage、meaningful missing-data semantics、portfolio weights、turnover、transaction cost、slippage、return / PnL accounting、reproducibility 和真实 performance bottlenecks。
+
+低价值 edge cases 优先记录 assumption / limitation，不为其增加大量实现复杂度。
+
+### Tests
+
+优先少量但强的 Quant correctness tests，重点覆盖 timing、alignment、grouping boundary、no look-ahead、portfolio invariants、turnover / cost 和 return accounting。避免为增加 test 数量堆积低价值 API edge cases。
+
+### Implementation Style
+
+继续遵循：
+
+```text
+simple correct Python
+→ production run
+→ profiling
+→ optimize real bottlenecks
+→ C++ / pybind11 only if profiling justifies it
+```
+
+坚持 `Correctness > Return`，不为获得漂亮 IC / Sharpe / PnL 进行 data snooping 或修改 baseline definitions。
+
+已知 Codex sandbox 无法运行 `uv`，不使用 pip、不创建替代环境、不修改 dependency management，只提供准确的本地 `uv run ...` 命令。
+
 ## Explicitly Out of Scope
 
 - ML / Deep Learning
