@@ -24,6 +24,17 @@ Day 3 — Factor Research
 
 Day 3 — Factor Research
 
+- Step 1 forward return：已实现 `forward_return(t, h) = price(t+h) / price(t) - 1`。
+- Forward horizon 按各 symbol 的 future available observations 计数，不引入 exchange calendar。
+- 计算按 symbol 隔离、按 date 升序执行，并恢复输入 index / row order；insufficient future observations 保留 NaN。
+- Step 2 cross-sectional rank：按 date 对 available stocks 独立计算 percentile rank；NaN 保留，ties 使用 average rank。
+- Step 3A daily IC：按 date 对 raw factor 与 raw forward return 的有效配对 observations 计算 Spearman correlation；不足 `min_obs` 或 correlation 未定义时保留 NaN。
+- Step 3B IC summary / ICIR：基于 non-NaN daily IC 计算 arithmetic mean、sample standard deviation（`ddof=1`）和未年化 ICIR；标准差无定义或为零时 ICIR 保留 NaN。
+- Step 4A quantile assignment：复用 cross-sectional percentile rank，按 `ceil(rank * n_quantiles)` 分组；Q1 为最低 factor，Qn 为最高 factor，ties 不拆分，missing factor 保留 missing quantile。
+- Step 4B daily quantile returns：先按 date × quantile 对有效 forward returns 计算 cross-sectional equal-weight arithmetic mean；输出保留固定 Q1...Qn schema，缺失组合保持 NaN。
+- Step 4C quantile return summary：对 daily quantile return matrix 按时间计算 arithmetic mean；top-minus-bottom 先逐日配对相减再求均值，不使用独立均值之差。
+- Step 5 factor correlation：按 date 对 raw factors 计算 pairwise-valid Spearman correlation matrix，再沿时间对 daily matrices 等权求 arithmetic mean；NaN 不填零。
+
 ## Day 2 — Factors: DONE
 
 - Implemented：20-day momentum、5-day reversal、20-day volatility。
@@ -40,4 +51,4 @@ Day 3 — Factor Research
 
 ## Next
 
-- Day 3 — Factor Research：cross-sectional rank、forward return、IC、ICIR 和 quantile analysis。
+- Day 3 — Factor Research：运行第一版 factor research results。
