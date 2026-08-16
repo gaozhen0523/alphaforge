@@ -6,7 +6,7 @@ Week 1 — End-to-End MVP
 
 ## Current Day
 
-Day 2 — Factors
+Day 3 — Factor Research
 
 ## Day 1 — Data: DONE
 
@@ -22,21 +22,22 @@ Day 2 — Factors
 
 ## 当前工作
 
-Day 2 — Factors：基础 factor engine 已实现，等待本地完整测试确认。
+Day 3 — Factor Research
 
-## Day 2 — Factors
+## Day 2 — Factors: DONE
 
-- 实现 `momentum(df, window=20)`：`close_t / close_(t-window) - 1`。
-- 实现 `reversal(df, window=5)`：negative trailing return。
-- 实现 `volatility(df, window=20)`：1-day close return 的 rolling sample standard deviation；不 annualize。
-- Timing semantics：factor(t) 仅使用 `<= t` 数据；factor 层不做 execution shift。
-- 所有 time-series calculation 按 symbol 隔离并按 date ascending 计算；输出恢复到输入 index。
-- lookback 不足保留 NaN。
-- `window <= 0` 明确拒绝，避免 negative shift 引入 look-ahead bias。
-- 添加 known values、sign、volatility、warm-up、symbol isolation、shuffled order 和 index alignment tests。
-- Codex 命令行环境无法运行项目 `uv`，完整 test suite 尚待本地执行。
+- Implemented：20-day momentum、5-day reversal、20-day volatility。
+- Factor timing：`factor(t)` 使用截至 t 的信息；factor layer 内不做 execution shift；后续 backtest 强制执行 `signal(t) → position(t+1)`。
+- Calculations 按 symbol 隔离、按时间顺序计算，并恢复到输入 index。
+- Insufficient lookback 保留 NaN。
+- Production sanity check（`ohlcv_hfq.parquet`）：352,215 rows；300 symbols；momentum NaN = 6,000；reversal NaN = 1,500；volatility NaN = 6,000；所有 factors 的 inf count = 0。
+- Extreme values 已人工检查，表现与真实 high-volatility / limit-up market events 一致，未发现明显 factor bug。
+
+### Known Limitations — Later Data Quality Work
+
+1. 当前 unbalanced panel 的 rolling window 使用 previous available observations，而不是 strict exchange-calendar sessions。
+2. ticker 变更后，data provider 可能将当前 ticker identifier 回填到历史 observations。
 
 ## Next
 
-- 本地运行 `uv run pytest`。
-- 测试通过后进入 Day 3 — Factor Research。
+- Day 3 — Factor Research：cross-sectional rank、forward return、IC、ICIR 和 quantile analysis。
