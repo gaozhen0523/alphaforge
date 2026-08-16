@@ -171,3 +171,9 @@ Notebook 只负责研究和可视化，核心逻辑放在 `src/`。
 - 一个真实 performance optimization story
 - 最好有一个 C++ / pybind11 优化模块
 - 可以支撑 10–30 分钟项目 deep dive
+
+## Python environment:
+- This project uses uv for dependency and environment management.
+- Codex cannot run `uv` because of sandbox/permission restrictions, do not modify or recreate the project environment. Report the limitation and provide the exact `uv run ...` command for the user to execute locally.
+- Do not use pip directly unless explicitly requested.
+- Do not create or use an alternative project environment.
