@@ -6,7 +6,7 @@ Week 1 — End-to-End MVP
 
 ## Current Day
 
-Day 5 — Backtest: DONE
+Day 6 — Analytics & Tests: DONE
 
 ## Day 1 — Data: DONE
 
@@ -75,6 +75,15 @@ Cost load sums 是 daily cost rates 的简单求和，不是直接累计 NAV 损
 - Verified tests：`uv run pytest tests/test_backtest.py tests/test_portfolio.py` → `10 passed in 0.73s`。
 - Production runner：`uv run python scripts/run_backtest.py`。
 
+## Day 6 — Analytics & Tests: DONE
+
+- Core APIs：`annualized_return`、`annualized_volatility`、`sharpe_ratio`、`max_drawdown`、`summarize_performance`；production runner：`uv run python scripts/run_analytics.py`。
+- Metric conventions：return 使用 daily `net_return` 复利，252 periods annualization；volatility 使用 sample std（`ddof=1`）；Sharpe 假设 risk-free rate 为 0，zero volatility 返回 `NaN`；drawdown 基于 NAV running peak 且结果不大于 0。
+- NAV / turnover：daily summary 每行是一个完成的 return period，隐含初始 NAV 为 1.0；turnover 直接复用 Day 5 `turnover`，`annualized_turnover = average_daily_turnover * 252`。
+- Production baseline：沿用 Day 5 的 1,212 daily periods，ending NAV `1.67713085`、cumulative return `67.71308486%`、total / average / annualized turnover `93.62184616 / 0.07724575 / 19.46592841`、annualized return `11.35049130%`；volatility / Sharpe / max drawdown 待本地 runner 输出确认。
+- Tests：新增 deterministic compounded return、sample volatility / Sharpe、max drawdown、flat portfolio 和 Day 5 backtest integration sanity；受 Codex sandbox 限制未执行，需本地运行 `uv run pytest tests/test_backtest.py tests/test_analytics.py`。
+- Day 5 contract review：未发现问题，也未修改 execution、return、cost 或 turnover semantics。
+
 ## Known Limitations
 
 - Frozen current-membership CSI300 universe 存在 survivorship / membership bias。
@@ -82,6 +91,6 @@ Cost load sums 是 daily cost rates 的简单求和，不是直接累计 NAV 损
 - Unbalanced panel 的 factor rolling / research forward horizon 使用 available observations，而非 strict exchange-calendar sessions。
 - Week 1 假设可以按 past-only marked close 理想化成交；不模拟 suspension 无法成交、limit up/down、bid/ask、volume participation、liquidity 或 market impact。
 
-## Next — Day 6: Analytics & Tests
+## Next — Day 7: End-to-End
 
-实现 annualized return / volatility、Sharpe、max drawdown 等 analytics，并继续验证关键 portfolio metrics；不修改已经确认的 Day 5 timing / accounting contract。
+实现 config-driven full pipeline，并用一条命令运行 baseline workflow。
