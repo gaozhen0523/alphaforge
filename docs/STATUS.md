@@ -6,7 +6,7 @@ Week 1 — End-to-End MVP
 
 ## Current Day
 
-Day 4 — Portfolio: DONE
+Day 5 — Backtest: DONE
 
 ## Day 1 — Data: DONE
 
@@ -120,12 +120,39 @@ uv run pytest tests/test_portfolio.py tests/test_quantiles.py tests/test_ranking
 
 Tests 覆盖 cross-sectional Q5、global weekly schedule、Friday 缺失、非 rebalance 日不重新选股、portfolio invariants、NaN factor exclusion，以及 symbol 在新 decision date 缺行时 target 正确归零。
 
+## Day 5 — Backtest: DONE
+
+- Implemented：`target → execution → actual position → weight drift → turnover → cost → return → NAV`；core API 为 `run_backtest(market_data, portfolio, transaction_cost_bps=5.0, slippage_bps=5.0)`，返回 position panel 和 daily portfolio summary。
+- Timing：decision date `t` 的 target 在下一 global trading date close 执行；当日先由 previous post-trade weights 承担 close-to-close return，再 drift 为 pre-trade weights，最后执行 delayed target。最后一个 decision 后若无下一 global date，则不执行。
+- Target / actual：`target_weight != actual portfolio weight`。Carry-forward target 不触发 daily rebalance；只有显式 `is_rebalance` 延迟形成的 execution event 才交易。即使连续 decision targets 相同，也会从当时 drifted pre-trade weights 调回 target。
+- Drift：stock weights 按 `w_i(1+r_i)/(1+r_p)` 漂移，cash weight 隐式为 `1-sum(stock weights)`，cash return 为 0；支持初始 cash、fully invested、portfolio-to-cash 和 cash-to-portfolio。
+- Trade / turnover：`gross_traded_weight = sum(abs(stock trade weights))`；`turnover` 为包含 cash leg 的 half-L1。Cost 使用 gross stock traded notional，而非 turnover。
+- Cost / NAV：transaction cost 和 slippage 均为 linear bps model；`net_return=(1+gross_return)(1-total_cost)-1`，`nav(t)=nav(t-1)(1+net_return(t))`，`cumulative_pnl=nav-1`。
+- Missing observation：在完整 global dates 上对每个 symbol 只用过去 observed close 做 forward fill；缺失 observation 当日 return 为 0，下次真实 close 体现累计变化，绝不 backfill future price。
+- Limitation：Week 1 假设可以按 idealized marked close 执行，不模拟 suspension 无法成交、limit up/down、bid/ask、volume participation、liquidity 或 market impact。
+
+Production runner：
+
+```text
+uv run python scripts/run_backtest.py
+```
+
+Production sanity result：待用户在本地 `uv` environment 执行后确认；Codex sandbox 未运行，不伪造 rows、cost 或 NAV 结果。
+
+Local tests command：
+
+```text
+uv run pytest tests/test_backtest.py tests/test_portfolio.py
+```
+
+Local test result：待用户本地执行后确认；Codex sandbox 未运行 `uv` tests。
+
 ## Known Limitations
 
 - Frozen current-membership CSI300 universe 存在 survivorship / membership bias。
 - Unbalanced panel 的 rolling/forward horizon 使用 available observations，而非 strict exchange-calendar sessions。
 - Data provider 可能将当前 ticker identifier 回填到历史 observations。
 
-## Next — Day 5: Backtest
+## Next — Day 6: Analytics & Tests
 
-实现完整的 `target(t) → execution / position → weight drift → turnover → cost → return → PnL` flow，并明确 execution timing，避免 look-ahead bias；不得把 forward-filled target 错误解释为 daily rebalance。
+实现 Sharpe、annualized return / volatility、max drawdown 等 analytics；Day 5 不提前加入这些 metrics。

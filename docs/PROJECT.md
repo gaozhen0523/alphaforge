@@ -76,8 +76,18 @@ factor(t) → signal(t) → target_weight(t)
 默认时间逻辑：
 
 ```text
-signal(t) → trade / position(t+1) → future return
+factor(t) → target_weight(t) → next global trading-date close execution
 ```
+
+每日先由 previous post-trade weights 承担当日 close-to-close return，再计算
+drifted pre-trade weights；若当日有 delayed execution event，才从 pre-trade
+weights 交易到上一 global trading date 的 decision target。Carry-forward target
+不表示 daily rebalance，`target_weight` 与 actual portfolio weight 必须区分。
+
+Unbalanced panel 使用 past-only forward-filled close marking；缺失 observation
+当天 return 为 0，下次真实 close 出现时一次性体现累计价格变化。Week 1 execution
+假设可按 marked close 成交，不模拟 suspension、limit up/down、liquidity 或 market
+impact。
 
 必须处理：
 
