@@ -80,7 +80,7 @@ Cost load sums 是 daily cost rates 的简单求和，不是直接累计 NAV 损
 - Core APIs：`annualized_return`、`annualized_volatility`、`sharpe_ratio`、`max_drawdown`、`summarize_performance`；production runner：`uv run python scripts/run_analytics.py`。
 - Metric conventions：return 使用 daily `net_return` 复利，252 periods annualization；volatility 使用 sample std（`ddof=1`）；Sharpe 假设 risk-free rate 为 0，zero volatility 返回 `NaN`；drawdown 基于 NAV running peak 且结果不大于 0。
 - NAV / turnover：daily summary 每行是一个完成的 return period，隐含初始 NAV 为 1.0；turnover 直接复用 Day 5 `turnover`，`annualized_turnover = average_daily_turnover * 252`。
-- Production baseline：沿用 Day 5 的 1,212 daily periods，ending NAV `1.67713085`、cumulative return `67.71308486%`、total / average / annualized turnover `93.62184616 / 0.07724575 / 19.46592841`、annualized return `11.35049130%`；volatility / Sharpe / max drawdown 待本地 runner 输出确认。
+- Production baseline（`uv run python scripts/run_analytics.py`）：annualized return `11.35049130%`、annualized volatility `24.30165667%`、Sharpe `0.56351490`、max drawdown `-35.63637308%`；total / average / annualized turnover `93.62184616 / 0.07724575 / 19.46592841`；ending NAV `1.67713085`、cumulative return `67.71308486%`。
 - Tests：新增 deterministic compounded return、sample volatility / Sharpe、max drawdown、flat portfolio 和 Day 5 backtest integration sanity；受 Codex sandbox 限制未执行，需本地运行 `uv run pytest tests/test_backtest.py tests/test_analytics.py`。
 - Day 5 contract review：未发现问题，也未修改 execution、return、cost 或 turnover semantics。
 
