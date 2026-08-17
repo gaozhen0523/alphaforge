@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -7,6 +8,7 @@ import pandas as pd
 
 from alphaforge.data import normalize_ohlcv
 from alphaforge.pipeline import load_pipeline_config, run_pipeline
+from scripts.run_pipeline import save_pipeline_outputs
 
 
 def test_baseline_config_loading() -> None:
@@ -31,6 +33,7 @@ def test_baseline_config_loading() -> None:
         "slippage_bps": 5.0,
     }
     assert config["analytics"]["periods_per_year"] == 252
+    assert config["output"]["directory"] == "outputs/baseline"
 
 
 def test_tiny_deterministic_end_to_end_pipeline(tmp_path: Path) -> None:
@@ -107,3 +110,38 @@ def test_tiny_deterministic_end_to_end_pipeline(tmp_path: Path) -> None:
         result.portfolio["is_rebalance"], "date"
     ].nunique() > 0
     assert result.daily_backtest["is_execution"].sum() > 0
+
+    output_dir = tmp_path / "outputs" / "baseline"
+    assert not output_dir.exists()
+
+    output_paths = save_pipeline_outputs(result, output_dir)
+
+    assert output_dir.is_dir()
+    assert all(path.is_file() for path in output_paths.values())
+
+    factor_summary = pd.read_csv(output_paths["factor_research"])
+    assert set(factor_summary["factor"]) == {
+        "momentum_20d",
+        "reversal_5d",
+        "volatility_20d",
+    }
+    assert {
+        "factor",
+        "valid_ic_days",
+        "mean_ic",
+        "icir",
+        "q5_minus_q1_mean",
+    }.issubset(factor_summary.columns)
+
+    saved_daily = pd.read_parquet(output_paths["daily_backtest"])
+    assert not saved_daily.empty
+    assert saved_daily.columns.tolist() == result.daily_backtest.columns.tolist()
+
+    saved_performance = json.loads(
+        output_paths["performance"].read_text(encoding="utf-8")
+    )
+    assert set(result.performance.index).issubset(saved_performance)
+    assert all(
+        isinstance(value, (int, float))
+        for value in saved_performance.values()
+    )

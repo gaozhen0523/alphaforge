@@ -91,6 +91,7 @@ Cost load sums 是 daily cost rates 的简单求和，不是直接累计 NAV 损
 - Structured result：返回 factor data、逐 factor IC / quantile results、factor correlation、target portfolio、positions、daily backtest 和 performance summary。
 - One-command runner：`uv run python scripts/run_pipeline.py`，默认读取 baseline config；也支持显式 TOML path，并只打印紧凑 baseline summary。
 - Integration tests：新增 baseline config sanity 与 deterministic E2E smoke test，覆盖完整 wiring、date ordering、metric keys、finite returns / NAV 和非空 executions；受 Codex sandbox 限制未执行。
+- Baseline artifacts：runner 自动创建 `outputs/baseline/` 并覆盖写入 `factor_research.csv`、`daily_backtest.parquet` 和 `performance.json`；保存逻辑仅消费现有 `PipelineResult`，不重新计算指标。
 - Correctness：未修改 Day 1–6 factor timing、forward return、quantile、portfolio、next-global-date execution、drift、turnover、cost、return / NAV 或 analytics semantics。
 - Production baseline：本轮未在 Codex sandbox 运行 `uv`，因此不新增或推测 production 数字；沿用 Day 3 / 5 / 6 已记录的独立 production sanity results，待本地 one-command runner 验证。
 

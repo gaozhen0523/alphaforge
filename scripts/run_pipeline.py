@@ -3,12 +3,59 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 from typing import Sequence
 
-from alphaforge.pipeline import load_pipeline_config, run_pipeline
+import pandas as pd
+
+from alphaforge.pipeline import (
+    PipelineResult,
+    load_pipeline_config,
+    run_pipeline,
+)
 
 DEFAULT_CONFIG_PATH = Path("configs/baseline.toml")
+
+
+def save_pipeline_outputs(
+    result: PipelineResult,
+    output_dir: str | Path,
+) -> dict[str, Path]:
+    """Persist the minimum useful baseline artifacts from existing results."""
+
+    directory = Path(output_dir)
+    directory.mkdir(parents=True, exist_ok=True)
+    paths = {
+        "factor_research": directory / "factor_research.csv",
+        "daily_backtest": directory / "daily_backtest.parquet",
+        "performance": directory / "performance.json",
+    }
+
+    factor_rows = []
+    for factor_name, research in result.factor_research.items():
+        factor_rows.append(
+            {
+                "factor": factor_name,
+                "valid_ic_days": int(research.ic_summary["n_obs"]),
+                "mean_ic": float(research.ic_summary["mean_ic"]),
+                "icir": float(research.ic_summary["icir"]),
+                "q5_minus_q1_mean": float(
+                    research.quantile_summary["top_minus_bottom"]
+                ),
+            }
+        )
+    pd.DataFrame(factor_rows).to_csv(paths["factor_research"], index=False)
+    result.daily_backtest.to_parquet(paths["daily_backtest"], index=False)
+
+    performance = {
+        metric: float(value) for metric, value in result.performance.items()
+    }
+    with paths["performance"].open("w", encoding="utf-8") as output_file:
+        json.dump(performance, output_file, indent=2, allow_nan=False)
+        output_file.write("\n")
+
+    return paths
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -73,6 +120,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"Sharpe ratio: {performance['sharpe_ratio']:.8f}")
     print(f"Max drawdown: {performance['max_drawdown']:.8%}")
     print(f"Annualized turnover: {performance['annualized_turnover']:.8f}")
+
+    output_paths = save_pipeline_outputs(result, config["output"]["directory"])
+    print("\nOutputs")
+    print(f"Factor research: {output_paths['factor_research']}")
+    print(f"Daily backtest: {output_paths['daily_backtest']}")
+    print(f"Performance: {output_paths['performance']}")
     return 0
 
 

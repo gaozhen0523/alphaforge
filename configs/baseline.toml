@@ -23,3 +23,6 @@ slippage_bps = 5.0
 
 [analytics]
 periods_per_year = 252
+
+[output]
+directory = "outputs/baseline"
