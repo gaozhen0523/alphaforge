@@ -1,6 +1,6 @@
 # AlphaForge — Four-Week Roadmap
 
-## Week 1 — End-to-End MVP
+## Week 1 — End-to-End MVP: DONE
 
 目标：
 
@@ -11,32 +11,32 @@
 - 建 repo、schema 和 Data Loader。
 - 下载小规模 OHLCV，清洗并存 Parquet。
 
-### Day 2 — Factors
+### Day 2 — Factors: DONE
 
 - 实现 Momentum / Reversal / Volatility。
 - 统一 factor API 和时间语义。
 
-### Day 3 — Factor Research
+### Day 3 — Factor Research: DONE
 
 - 实现 rank、forward return、IC、ICIR、quantile analysis。
 - 跑出第一版研究结果。
 
-### Day 4 — Portfolio
+### Day 4 — Portfolio: DONE
 
 - factor → signal → target weights。
 - Weekly rebalance、top quantile、equal weight。
 
-### Day 5 — Backtest
+### Day 5 — Backtest: DONE
 
 - position → turnover → cost → return → PnL。
 - 明确 `signal(t) → position(t+1)`，避免 look-ahead bias（前视偏差）。
 
-### Day 6 — Analytics & Tests
+### Day 6 — Analytics & Tests: DONE
 
 - 实现 Sharpe、MDD、volatility、turnover 等。
 - 测试 timing、weights、cost、PnL。
 
-### Day 7 — End-to-End
+### Day 7 — End-to-End: DONE
 
 - config 驱动完整 pipeline。
 - 一条命令跑出 baseline results。

@@ -1,0 +1,25 @@
+[data]
+processed_path = "data/processed/ohlcv_hfq.parquet"
+
+[factors]
+momentum_window = 20
+reversal_window = 5
+volatility_window = 20
+
+[research]
+forward_horizon = 1
+n_quantiles = 5
+factors = ["momentum_20d", "reversal_5d", "volatility_20d"]
+
+[portfolio]
+# The public portfolio API fixes weekly, long-only, top-quantile, equal-weight
+# semantics. With five quantiles, the selected top quantile is Q5.
+factor = "momentum_20d"
+n_quantiles = 5
+
+[backtest]
+transaction_cost_bps = 5.0
+slippage_bps = 5.0
+
+[analytics]
+periods_per_year = 252

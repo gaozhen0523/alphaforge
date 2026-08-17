@@ -132,9 +132,10 @@ src/alphaforge/
     portfolio/
     backtest/
     analytics/
+    pipeline.py
 
-configs/
-scripts/
+configs/baseline.toml
+scripts/run_pipeline.py
 tests/
 notebooks/
 benchmarks/

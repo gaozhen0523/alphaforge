@@ -2,11 +2,11 @@
 
 ## Current Phase
 
-Week 1 — End-to-End MVP
+Week 2 — Resume-Ready MVP
 
 ## Current Day
 
-Day 6 — Analytics & Tests: DONE
+Day 8 — Data Quality: NEXT
 
 ## Day 1 — Data: DONE
 
@@ -84,6 +84,16 @@ Cost load sums 是 daily cost rates 的简单求和，不是直接累计 NAV 损
 - Tests：新增 deterministic compounded return、sample volatility / Sharpe、max drawdown、flat portfolio 和 Day 5 backtest integration sanity；受 Codex sandbox 限制未执行，需本地运行 `uv run pytest tests/test_backtest.py tests/test_analytics.py`。
 - Day 5 contract review：未发现问题，也未修改 execution、return、cost 或 turnover semantics。
 
+## Day 7 — End-to-End: DONE
+
+- Baseline config：`configs/baseline.toml` 定义 processed data path、20 / 5 / 20 factor windows、1-step forward horizon、5 quantiles、`momentum_20d` Q5 portfolio、5 bps transaction cost、5 bps slippage 和 252 annualization periods。
+- Pipeline API：`load_pipeline_config(path)` 和 `run_pipeline(config)`；一次加载 market data、一次计算三个 factors 和 forward return，随后串联 research、weekly long-only equal-weight portfolio、delayed-execution backtest 与 analytics。
+- Structured result：返回 factor data、逐 factor IC / quantile results、factor correlation、target portfolio、positions、daily backtest 和 performance summary。
+- One-command runner：`uv run python scripts/run_pipeline.py`，默认读取 baseline config；也支持显式 TOML path，并只打印紧凑 baseline summary。
+- Integration tests：新增 baseline config sanity 与 deterministic E2E smoke test，覆盖完整 wiring、date ordering、metric keys、finite returns / NAV 和非空 executions；受 Codex sandbox 限制未执行。
+- Correctness：未修改 Day 1–6 factor timing、forward return、quantile、portfolio、next-global-date execution、drift、turnover、cost、return / NAV 或 analytics semantics。
+- Production baseline：本轮未在 Codex sandbox 运行 `uv`，因此不新增或推测 production 数字；沿用 Day 3 / 5 / 6 已记录的独立 production sanity results，待本地 one-command runner 验证。
+
 ## Known Limitations
 
 - Frozen current-membership CSI300 universe 存在 survivorship / membership bias。
@@ -91,6 +101,6 @@ Cost load sums 是 daily cost rates 的简单求和，不是直接累计 NAV 损
 - Unbalanced panel 的 factor rolling / research forward horizon 使用 available observations，而非 strict exchange-calendar sessions。
 - Week 1 假设可以按 past-only marked close 理想化成交；不模拟 suspension 无法成交、limit up/down、bid/ask、volume participation、liquidity 或 market impact。
 
-## Next — Day 7: End-to-End
+## Next — Day 8: Data Quality
 
-实现 config-driven full pipeline，并用一条命令运行 baseline workflow。
+补充 missing / duplicate / invalid data checks，并明确 adjustment 与 suspension handling rules。
