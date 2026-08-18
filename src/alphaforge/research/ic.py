@@ -53,3 +53,25 @@ def summarize_ic(ic: pd.Series) -> pd.Series:
             "n_obs": len(valid),
         }
     )
+
+
+def summarize_yearly_ic(ic: pd.Series, factor: str) -> pd.DataFrame:
+    """Summarize daily IC by the calendar year of its formation-date index."""
+
+    rows = []
+    for year, yearly_ic in ic.groupby(ic.index.year, sort=True):
+        summary = summarize_ic(yearly_ic)
+        rows.append(
+            {
+                "factor": factor,
+                "year": int(year),
+                "valid_ic_days": int(summary["n_obs"]),
+                "mean_ic": summary["mean_ic"],
+                "icir": summary["icir"],
+            }
+        )
+
+    return pd.DataFrame(
+        rows,
+        columns=["factor", "year", "valid_ic_days", "mean_ic", "icir"],
+    )

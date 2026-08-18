@@ -6,7 +6,7 @@ Week 2 — Resume-Ready MVP
 
 ## Current Day
 
-Day 8 — Data Quality: DONE
+Day 9 — Research Robustness: DONE
 
 ## Day 1 — Data: DONE
 
@@ -104,13 +104,25 @@ Cost load sums 是 daily cost rates 的简单求和，不是直接累计 NAV 损
 - Production runner：新增 `uv run python scripts/run_data_quality.py`；本轮不记录或猜测 production diagnostics 数字。
 - Tests：新增 deterministic tiny unbalanced panel coverage/internal/boundary calculation，并补充 explicit non-positive price / non-finite value validation；`uv` 在 Codex sandbox 中无法初始化 user cache，pytest 未进入 collection，尚未执行。
 
+## Day 9 — Research Robustness: DONE
+
+- Core APIs：新增 `compute_decay_return`、`compute_factor_decay_ic`、`summarize_yearly_ic` 和 `run_research_robustness`；multi-horizon research 继续复用 Day 3 的 `compute_forward_return`、daily IC / IC summary 和 quantile APIs。
+- Multi-horizon：三个 baseline factors 固定分析 available-observation horizons `1 / 2 / 5 / 10`，逐 factor / horizon 汇总 valid IC days、mean IC、non-annualized ICIR 和 paired daily Q5−Q1 mean return；不选择 best horizon、不修改 factor definitions。
+- Factor decay：`decay_return(t, lag=k) = close(t+k+1) / close(t+k) - 1`；offset 按各 symbol future available observations 计算并恢复到 formation row，IC 始终使用 `factor(t)`。`lag=0` 直接复用 horizon-1 forward return implementation，baseline lags 为 `0 / 1 / 2 / 3 / 4 / 5 / 10`。
+- Yearly stability：复用 horizon-1 daily IC series，按 factor formation date 的 calendar year 汇总 factor、year、valid IC days、mean IC 和 ICIR，只作 descriptive analysis。
+- Interpretation：longer-horizon forward returns overlap，因此相邻 daily IC observations 并非完全 independent；ICIR 仅作为 descriptive robustness metric，不是严格 significance test；horizon / lag 均为 available-observation offset，不是 strict exchange-calendar session offset。
+- Production runner：`uv run python scripts/run_research_robustness.py`；只加载 market data、计算三个 baseline factors 和 Day 9 research，不运行 portfolio / backtest。保存 `outputs/baseline/research_horizons.csv`、`factor_decay.csv` 和 `yearly_ic_stability.csv`。
+- Tests：新增 lag-0 / horizon-1 equivalence、deterministic lag interval alignment、formation-date factor no-shift、factor-date yearly grouping，以及 robustness summary dimensions；受 Codex sandbox 的已知 `uv` 限制尚未执行。
+- Correctness review：未发现 Day 1–8 correctness issue，未修改 factor、portfolio、backtest、execution、cost、Data Layer 或 Day 3 research semantics。
+
 ## Known Limitations
 
 - Frozen current-membership CSI300 universe 存在 survivorship / membership bias。
 - Data provider 可能将当前 ticker identifier 回填到历史 observations。
 - Unbalanced panel 的 factor rolling / research forward horizon 使用 available observations，而非 strict exchange-calendar sessions。
+- Longer-horizon forward returns overlap；daily IC observations 不应解释为完全 independent，当前 ICIR 也不用于严格统计显著性判断。
 - Week 1 假设可以按 past-only marked close 理想化成交；不模拟 suspension 无法成交、limit up/down、bid/ask、volume participation、liquidity 或 market impact。
 
-## Next — Day 9: Research Robustness
+## Next — Day 10: Out-of-Sample
 
-补充 factor decay 和不同 forward horizon，检查 research result stability。
+做时间 train / validation / test，理解并控制 overfitting。
