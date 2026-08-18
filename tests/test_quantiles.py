@@ -247,7 +247,7 @@ def test_quantile_mean_returns_are_calculated_over_dates() -> None:
             "q3_mean": 0.10,
             "q4_mean": 0.01,
             "q5_mean": 0.20,
-            "top_minus_bottom": 0.09,
+            "top_minus_bottom": 0.18,
         }
     )
     pd.testing.assert_series_equal(result, expected)
@@ -260,21 +260,22 @@ def test_quantile_summary_ignores_nan_daily_observations() -> None:
     assert result["q5_mean"] == pytest.approx(0.20)
 
 
-def test_top_minus_bottom_uses_paired_daily_spreads() -> None:
+def test_top_minus_bottom_is_q5_mean_minus_q1_mean() -> None:
     result = summarize_quantile_returns(daily_quantile_return_matrix())
 
-    assert result["top_minus_bottom"] == pytest.approx(0.09)
+    assert result["top_minus_bottom"] == pytest.approx(
+        result["q5_mean"] - result["q1_mean"]
+    )
 
 
-def test_paired_spread_differs_from_difference_of_independent_means() -> None:
+def test_top_minus_bottom_does_not_require_paired_daily_observations() -> None:
     quantile_returns = daily_quantile_return_matrix()
 
     result = summarize_quantile_returns(quantile_returns)
     difference_of_means = quantile_returns[5].mean() - quantile_returns[1].mean()
 
     assert difference_of_means == pytest.approx(0.18)
-    assert result["top_minus_bottom"] == pytest.approx(0.09)
-    assert result["top_minus_bottom"] != pytest.approx(difference_of_means)
+    assert result["top_minus_bottom"] == pytest.approx(difference_of_means)
 
 
 def test_quantile_summary_supports_custom_number_of_quantiles() -> None:
@@ -288,7 +289,7 @@ def test_quantile_summary_supports_custom_number_of_quantiles() -> None:
         "q3_mean",
         "top_minus_bottom",
     ]
-    assert result["top_minus_bottom"] == pytest.approx(0.03)
+    assert result["top_minus_bottom"] == pytest.approx(0.08)
 
 
 def test_summarize_quantile_returns_does_not_modify_input() -> None:

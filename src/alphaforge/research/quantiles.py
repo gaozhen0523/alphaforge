@@ -49,15 +49,15 @@ def compute_quantile_returns(
 def summarize_quantile_returns(
     quantile_returns: pd.DataFrame,
 ) -> pd.Series:
-    """Summarize mean daily returns by quantile and the paired top-bottom spread."""
+    """Summarize mean daily returns and the top-minus-bottom mean spread."""
 
     summary = quantile_returns.mean()
     summary.index = [f"q{quantile}_mean" for quantile in quantile_returns.columns]
 
     bottom_quantile = quantile_returns.columns.min()
     top_quantile = quantile_returns.columns.max()
-    daily_spread = (
-        quantile_returns[top_quantile] - quantile_returns[bottom_quantile]
+    summary.loc["top_minus_bottom"] = (
+        summary[f"q{top_quantile}_mean"]
+        - summary[f"q{bottom_quantile}_mean"]
     )
-    summary.loc["top_minus_bottom"] = daily_spread.mean()
     return summary
