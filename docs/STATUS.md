@@ -160,8 +160,32 @@ Yearly horizon-1 mean IC：
 - Strategy evaluation：完整 factors → weekly Q5 equal-weight portfolio → delayed-execution backtest 只连续运行一次；2023 decision 可以在 2024 下一 global date 合法执行，analytics boundary 不清仓、不 reset cash / position / strategy state。
 - Period analytics：从 continuous daily backtest 按 period 切 `net_return` / turnover；return stream 在每个 period 内从 NAV 1 重新复利，仅用于 local cumulative return、ending NAV、risk 和 turnover summary，不改变底层 trading state。
 - Core APIs：`assign_oos_period`、`compute_period_forward_return`、`run_out_of_sample_research`、`summarize_performance_by_period`；runner 为 `uv run python scripts/run_out_of_sample.py`，目标 outputs 为 `outputs/baseline/oos_factor_research.csv` 和 `oos_performance.csv`。
-- Tests：新增 `tests/test_out_of_sample.py`，覆盖 chronological assignment、OOS lookback continuity、research label boundary、跨 analytics boundary 的 continuous execution / position、period-local compounding 和 output periods / exact spread。Codex sandbox 中 `uv` cache 初始化失败，pytest 未进入 collection；需本地执行 `uv run pytest tests/test_out_of_sample.py tests/test_backtest.py tests/test_analytics.py tests/test_quantiles.py`。
-- Limitation：这些 OOS results 可能在 Day 12 的后续 factor combination research 中被再次查看，因此是 chronological robustness evidence，不是 permanently untouched final holdout。本轮 production runner 未在 sandbox 执行，不记录或推测 production results。
+- Verified tests：`uv run pytest tests/test_out_of_sample.py tests/test_backtest.py tests/test_analytics.py tests/test_quantiles.py` → `46 passed in 2.13s`。Production runner 已成功生成 `outputs/baseline/oos_factor_research.csv` 和 `oos_performance.csv`。
+
+Factor OOS production results：
+
+| Factor | Period | Valid IC days | Mean IC | ICIR | Q5−Q1 |
+|---|---|---:|---:|---:|---:|
+| `momentum_20d` | IS 2021–2023 | 706 | -0.01404390 | -0.06200789 | 0.00002557 |
+| `momentum_20d` | OOS 2024 | 241 | -0.00300710 | -0.01196298 | 0.00074496 |
+| `momentum_20d` | OOS 2025 | 242 | -0.02740053 | -0.12763778 | 0.00062617 |
+| `reversal_5d` | IS 2021–2023 | 721 | 0.01896301 | 0.09714561 | -0.00016418 |
+| `reversal_5d` | OOS 2024 | 241 | 0.00486900 | 0.01962727 | -0.00066067 |
+| `reversal_5d` | OOS 2025 | 242 | 0.04535878 | 0.22531863 | 0.00003242 |
+| `volatility_20d` | IS 2021–2023 | 706 | -0.03011427 | -0.13570610 | 0.00066260 |
+| `volatility_20d` | OOS 2024 | 241 | -0.04939381 | -0.16719233 | 0.00007833 |
+| `volatility_20d` | OOS 2025 | 242 | -0.01634385 | -0.05475518 | 0.00208796 |
+
+Frozen baseline strategy production results：
+
+| Period | Annualized return | Volatility | Sharpe | Max drawdown | Cumulative return | Total turnover |
+|---|---:|---:|---:|---:|---:|---:|
+| IS 2021–2023 | -2.4579% | 22.5999% | 0.0028 | -35.6364% | -6.9278% | 55.8263 |
+| OOS 2024 | 20.6151% | 27.9782% | 0.8072 | -16.4477% | 19.7213% | 19.6198 |
+| OOS 2025 | 52.8102% | 25.2367% | 1.8079 | -15.7725% | 50.5135% | 18.1758 |
+
+- Interpretation：factor IC / extreme-quantile spread 的 magnitude 明显 time-varying，且 IC 与 Q5−Q1 sign 不必一致；strategy OOS performance 高于 IS 仅作为 frozen-rule chronological evidence，不用于回头修改 baseline。
+- Limitation：这些 OOS results 可能在 Day 12 的后续 factor combination research 中被再次查看，因此是 retrospective chronological robustness evidence，不是 permanently untouched final holdout。
 
 ## Known Limitations
 
