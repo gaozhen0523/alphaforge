@@ -6,7 +6,7 @@ Week 2 — Resume-Ready MVP
 
 ## Current Day
 
-Day 9 — Research Robustness: DONE
+Day 10 — Out-of-Sample: DONE
 
 ## Day 1 — Data: DONE
 
@@ -153,6 +153,16 @@ Yearly horizon-1 mean IC：
 - Verified tests：`uv run pytest tests/test_quantiles.py tests/test_research_robustness.py` → `33 passed`；full suite `uv run pytest` → `176 passed, 2 expected ConstantInputWarning`。
 - Production refresh：已重新运行 `run_factor_research.py`、`run_research_robustness.py` 和 `run_pipeline.py`，相关 baseline outputs 已按 exact quantile contract 刷新。
 
+## Day 10 — Out-of-Sample: DONE
+
+- 固定 chronological periods：IS = 2021–2023，OOS = 2024 / 2025；本轮只做 retrospective evaluation，不根据结果修改 factor、portfolio、execution、cost 或其他 frozen baseline definitions。
+- Factor research：三个 baseline factors 先在完整 2021–2025 history 上按 past-only semantics 计算，再按 formation date 切 period；horizon-1 forward-return labels 在各 period 内独立计算，不跨 research boundary。逐 factor / period 汇总 valid IC days、mean IC、ICIR、Q1 / Q5 mean return 和 exact `mean(Q5) - mean(Q1)`。
+- Strategy evaluation：完整 factors → weekly Q5 equal-weight portfolio → delayed-execution backtest 只连续运行一次；2023 decision 可以在 2024 下一 global date 合法执行，analytics boundary 不清仓、不 reset cash / position / strategy state。
+- Period analytics：从 continuous daily backtest 按 period 切 `net_return` / turnover；return stream 在每个 period 内从 NAV 1 重新复利，仅用于 local cumulative return、ending NAV、risk 和 turnover summary，不改变底层 trading state。
+- Core APIs：`assign_oos_period`、`compute_period_forward_return`、`run_out_of_sample_research`、`summarize_performance_by_period`；runner 为 `uv run python scripts/run_out_of_sample.py`，目标 outputs 为 `outputs/baseline/oos_factor_research.csv` 和 `oos_performance.csv`。
+- Tests：新增 `tests/test_out_of_sample.py`，覆盖 chronological assignment、OOS lookback continuity、research label boundary、跨 analytics boundary 的 continuous execution / position、period-local compounding 和 output periods / exact spread。Codex sandbox 中 `uv` cache 初始化失败，pytest 未进入 collection；需本地执行 `uv run pytest tests/test_out_of_sample.py tests/test_backtest.py tests/test_analytics.py tests/test_quantiles.py`。
+- Limitation：这些 OOS results 可能在 Day 12 的后续 factor combination research 中被再次查看，因此是 chronological robustness evidence，不是 permanently untouched final holdout。本轮 production runner 未在 sandbox 执行，不记录或推测 production results。
+
 ## Known Limitations
 
 - Frozen current-membership CSI300 universe 存在 survivorship / membership bias。
@@ -161,8 +171,7 @@ Yearly horizon-1 mean IC：
 - Longer-horizon forward returns overlap；daily IC observations 不应解释为完全 independent，当前 ICIR 也不用于严格统计显著性判断。
 - Week 1 假设可以按 past-only marked close 理想化成交；不模拟 suspension 无法成交、limit up/down、bid/ask、volume participation、liquidity 或 market impact。
 
-## Next — Day 10: Out-of-Sample
+## Next — Day 11: Cost Analysis
 
-- time-based train / validation / test split
-- evaluate factor robustness out of sample
-- control overfitting / data snooping
+- transaction cost / slippage sensitivity
+- analyze turnover impact without changing the frozen baseline

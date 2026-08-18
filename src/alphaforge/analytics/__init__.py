@@ -6,6 +6,7 @@ from .metrics import (
     max_drawdown,
     sharpe_ratio,
     summarize_performance,
+    summarize_performance_by_period,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "max_drawdown",
     "sharpe_ratio",
     "summarize_performance",
+    "summarize_performance_by_period",
 ]

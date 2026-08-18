@@ -6,6 +6,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from alphaforge.periods import OOS_PERIODS
+
 
 def annualized_return(
     daily_return: pd.Series,
@@ -86,3 +88,28 @@ def summarize_performance(
         },
         dtype=float,
     )
+
+
+def summarize_performance_by_period(
+    daily_summary: pd.DataFrame,
+    annualization_factor: int = 252,
+) -> pd.DataFrame:
+    """Measure fixed IS/OOS periods from one continuous backtest result.
+
+    Trading state is not reset. Only the selected period's net-return stream is
+    rebased to a local NAV of 1 for period performance measurement.
+    """
+
+    rows = []
+    dates = pd.to_datetime(daily_summary["date"])
+    for period, start, end in OOS_PERIODS:
+        period_data = daily_summary.loc[dates.between(start, end)].copy()
+        period_data["nav"] = (1.0 + period_data["net_return"]).cumprod()
+        period_data["cumulative_pnl"] = period_data["nav"] - 1.0
+        summary = summarize_performance(
+            period_data,
+            annualization_factor=annualization_factor,
+        )
+        rows.append({"period": period, **summary.to_dict()})
+
+    return pd.DataFrame(rows)
