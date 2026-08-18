@@ -107,13 +107,51 @@ Cost load sums 是 daily cost rates 的简单求和，不是直接累计 NAV 损
 ## Day 9 — Research Robustness: DONE
 
 - Core APIs：新增 `compute_decay_return`、`compute_factor_decay_ic`、`summarize_yearly_ic` 和 `run_research_robustness`；multi-horizon research 继续复用 Day 3 的 `compute_forward_return`、daily IC / IC summary 和 quantile APIs。
-- Multi-horizon：三个 baseline factors 固定分析 available-observation horizons `1 / 2 / 5 / 10`，逐 factor / horizon 汇总 valid IC days、mean IC、non-annualized ICIR 和 paired daily Q5−Q1 mean return；不选择 best horizon、不修改 factor definitions。
+- Multi-horizon：三个 baseline factors 固定分析 available-observation horizons `1 / 2 / 5 / 10`，逐 factor / horizon 汇总 valid IC days、mean IC、non-annualized ICIR 和 `mean(Q5 return) - mean(Q1 return)`；不选择 best horizon、不修改 factor definitions。
 - Factor decay：`decay_return(t, lag=k) = close(t+k+1) / close(t+k) - 1`；offset 按各 symbol future available observations 计算并恢复到 formation row，IC 始终使用 `factor(t)`。`lag=0` 直接复用 horizon-1 forward return implementation，baseline lags 为 `0 / 1 / 2 / 3 / 4 / 5 / 10`。
 - Yearly stability：复用 horizon-1 daily IC series，按 factor formation date 的 calendar year 汇总 factor、year、valid IC days、mean IC 和 ICIR，只作 descriptive analysis。
-- Interpretation：longer-horizon forward returns overlap，因此相邻 daily IC observations 并非完全 independent；ICIR 仅作为 descriptive robustness metric，不是严格 significance test；horizon / lag 均为 available-observation offset，不是 strict exchange-calendar session offset。
 - Production runner：`uv run python scripts/run_research_robustness.py`；只加载 market data、计算三个 baseline factors 和 Day 9 research，不运行 portfolio / backtest。保存 `outputs/baseline/research_horizons.csv`、`factor_decay.csv` 和 `yearly_ic_stability.csv`。
-- Tests：新增 lag-0 / horizon-1 equivalence、deterministic lag interval alignment、formation-date factor no-shift、factor-date yearly grouping，以及 robustness summary dimensions；受 Codex sandbox 的已知 `uv` 限制尚未执行。
-- Correctness review：未发现 Day 1–8 correctness issue，未修改 factor、portfolio、backtest、execution、cost、Data Layer 或 Day 3 research semantics。
+
+Multi-horizon production results：
+
+| Factor | Horizon | Valid IC days | Mean IC | ICIR | Q5−Q1 mean |
+|---|---:|---:|---:|---:|---:|
+| `momentum_20d` | 1 | 1,191 | -0.01432920 | -0.06249886 | 0.00029679 |
+| `momentum_20d` | 2 | 1,190 | -0.01452612 | -0.06604244 | 0.00042596 |
+| `momentum_20d` | 5 | 1,187 | -0.01542102 | -0.07283305 | 0.00062804 |
+| `momentum_20d` | 10 | 1,182 | -0.01857031 | -0.08948986 | 0.00029403 |
+| `reversal_5d` | 1 | 1,206 | 0.02155429 | 0.10352345 | -0.00020740 |
+| `reversal_5d` | 2 | 1,205 | 0.01439332 | 0.07362202 | -0.00009052 |
+| `reversal_5d` | 5 | 1,202 | 0.00727173 | 0.03823394 | -0.00012586 |
+| `reversal_5d` | 10 | 1,197 | 0.00622264 | 0.03266437 | -0.00082532 |
+| `volatility_20d` | 1 | 1,191 | -0.03175493 | -0.12444022 | 0.00080208 |
+| `volatility_20d` | 2 | 1,190 | -0.03397301 | -0.13464029 | 0.00145014 |
+| `volatility_20d` | 5 | 1,187 | -0.02778272 | -0.11091756 | 0.00339800 |
+| `volatility_20d` | 10 | 1,182 | -0.02593504 | -0.10355749 | 0.00629665 |
+
+Factor-decay mean IC：
+
+| Factor | Lag 0 | Lag 1 | Lag 2 | Lag 3 | Lag 4 | Lag 5 | Lag 10 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `momentum_20d` | -0.01432920 | -0.01033565 | -0.00923649 | -0.00853519 | -0.00825883 | -0.00481054 | -0.00833558 |
+| `reversal_5d` | 0.02155429 | 0.01204611 | 0.00760575 | 0.00553533 | 0.00172225 | 0.00188520 | 0.00423668 |
+| `volatility_20d` | -0.03175493 | -0.03279714 | -0.03210162 | -0.03127993 | -0.03027386 | -0.02987910 | -0.02947452 |
+
+Yearly horizon-1 mean IC：
+
+| Factor | 2021 | 2022 | 2023 | 2024 | 2025 |
+|---|---:|---:|---:|---:|---:|
+| `momentum_20d` | -0.01056921 | -0.01258497 | -0.01782710 | -0.00296899 | -0.02740053 |
+| `reversal_5d` | 0.03010830 | 0.02465863 | 0.00322757 | 0.00455955 | 0.04535878 |
+| `volatility_20d` | -0.01156337 | -0.03014409 | -0.04889107 | -0.05024698 | -0.01634385 |
+
+- Production conclusion：`reversal_5d` exhibits clear short-horizon decay，mean IC 从 lag 0 的 `0.02155` 快速衰减，到 lag 4–5 接近 0；`volatility_20d` 的 negative rank association 在 lag 0–10 内较 persistent；`momentum_20d` 是 weak / noisy negative association，有 attenuation 但不是 clean monotonic decay。
+- Yearly stability：三个 factor 的 horizon-1 mean IC 在 2021–2025 内 sign 均保持一致，但 magnitude 有明显 time variation。
+- Interpretation：multi-horizon / decay / yearly analysis 仅作 descriptive robustness analysis，不用于选择 best horizon 或 tuning baseline。Longer-horizon forward returns overlap，daily IC observations 并非完全 independent；ICIR 不是严格 significance test；horizon / lag 均为 per-symbol available-observation offset，不是 strict exchange-calendar session offset。
+- IC / quantile interpretation：Mean IC 衡量整个横截面的 Spearman rank relationship，Q5−Q1 只衡量 extreme quantiles 的 raw mean return spread；non-monotonic quantile profile 下两者 sign 可以不同，不据此修改 factor definitions。
+- Quantile correctness fix：`summarize_quantile_returns()` 曾将 `top_minus_bottom` 计算为 mean of paired daily Q5−Q1 spreads，现已改为 exact contract `mean(Q5 return) - mean(Q1 return)`。当前 production dataset 上两种定义结果恰好一致；该修复不影响 IC、quantile assignment、portfolio selection、backtest、PnL 或其他 Day 1–8 semantics。
+- Verified tests：`uv run pytest tests/test_quantiles.py tests/test_research_robustness.py` → `33 passed`；full suite `uv run pytest` → `176 passed, 2 expected ConstantInputWarning`。
+- Production refresh：已重新运行 `run_factor_research.py`、`run_research_robustness.py` 和 `run_pipeline.py`，相关 baseline outputs 已按 exact quantile contract 刷新。
 
 ## Known Limitations
 
@@ -125,4 +163,6 @@ Cost load sums 是 daily cost rates 的简单求和，不是直接累计 NAV 损
 
 ## Next — Day 10: Out-of-Sample
 
-做时间 train / validation / test，理解并控制 overfitting。
+- time-based train / validation / test split
+- evaluate factor robustness out of sample
+- control overfitting / data snooping

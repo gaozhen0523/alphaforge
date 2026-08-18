@@ -65,15 +65,16 @@ Data
 - 补 missing / duplicate / invalid data 校验。
 - 明确 adjustment、停牌等处理规则。
 
-### Day 9 — Research Robustness
+### Day 9 — Research Robustness: DONE
 
 - factor decay、不同 forward horizon。
 - 检查结果稳定性。
 
 ### Day 10 — Out-of-Sample
 
-- 做时间 train / validation / test。
-- 理解并控制 overfitting。
+- time-based train / validation / test split。
+- evaluate factor robustness out of sample。
+- control overfitting / data snooping。
 
 ### Day 11 — Cost Analysis
 
