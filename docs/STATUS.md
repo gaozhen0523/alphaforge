@@ -6,7 +6,7 @@ Week 2 — Resume-Ready MVP
 
 ## Current Day
 
-Day 8 — Data Quality: NEXT
+Day 8 — Data Quality: DONE
 
 ## Day 1 — Data: DONE
 
@@ -95,6 +95,15 @@ Cost load sums 是 daily cost rates 的简单求和，不是直接累计 NAV 损
 - Correctness：未修改 Day 1–6 factor timing、forward return、quantile、portfolio、next-global-date execution、drift、turnover、cost、return / NAV 或 analytics semantics。
 - Production baseline：本轮未在 Codex sandbox 运行 `uv`，因此不新增或推测 production 数字；沿用 Day 3 / 5 / 6 已记录的独立 production sanity results，待本地 one-command runner 验证。
 
+## Day 8 — Data Quality: DONE
+
+- Hard validation：扩展现有 `validate_ohlcv`，canonical observed row 明确拒绝 duplicate `(date, symbol)`、OHLCV NaN / non-finite、non-positive OHLC、negative volume，以及 high/low 与 open/close bounds violations；invalid data 不自动修复、drop 或补 row。
+- Diagnostics API：新增 `summarize_ohlcv_quality(df)`，返回 rows、symbols、global dates、expected panel rows、observed unique rows、missing / coverage、duplicate pairs、invalid observations、internal missing 和 boundary missing。
+- Missing semantics：expected panel 仅用于 diagnostics，Data Layer 继续保持 unbalanced observed panel；internal / boundary 只描述 gap location，不推断 suspension、IPO / delisting 或 provider gap 等真实原因。
+- Adjustment / downstream semantics：production research 使用 `hfq` adjusted OHLC 规避 corporate-action mechanical jumps，但该 research series 不是历史 quoted execution price；factor / research 继续使用 available-observation semantics，Backtest 继续使用 past-only forward-filled close marking。Valuation fill 不代表 realistic tradability，Week 1 marked-close execution 仍是已知理想化假设。
+- Production runner：新增 `uv run python scripts/run_data_quality.py`；本轮不记录或猜测 production diagnostics 数字。
+- Tests：新增 deterministic tiny unbalanced panel coverage/internal/boundary calculation，并补充 explicit non-positive price / non-finite value validation；`uv` 在 Codex sandbox 中无法初始化 user cache，pytest 未进入 collection，尚未执行。
+
 ## Known Limitations
 
 - Frozen current-membership CSI300 universe 存在 survivorship / membership bias。
@@ -102,6 +111,6 @@ Cost load sums 是 daily cost rates 的简单求和，不是直接累计 NAV 损
 - Unbalanced panel 的 factor rolling / research forward horizon 使用 available observations，而非 strict exchange-calendar sessions。
 - Week 1 假设可以按 past-only marked close 理想化成交；不模拟 suspension 无法成交、limit up/down、bid/ask、volume participation、liquidity 或 market impact。
 
-## Next — Day 8: Data Quality
+## Next — Day 9: Research Robustness
 
-补充 missing / duplicate / invalid data checks，并明确 adjustment 与 suspension handling rules。
+补充 factor decay 和不同 forward horizon，检查 research result stability。

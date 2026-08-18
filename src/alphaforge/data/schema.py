@@ -46,6 +46,35 @@ class OHLCVValidationError(ValueError):
     """Raised when a frame violates the canonical OHLCV contract."""
 
 
+def _ohlcv_violation_masks(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return row masks for the canonical numeric and OHLC rules."""
+
+    numeric = frame.loc[:, list(_NUMERIC_COLUMNS)]
+    prices = frame.loc[:, list(_PRICE_COLUMNS)]
+    invalid_relationship = ~(
+        frame["high"].ge(frame["low"])
+        & frame["high"].ge(frame["open"])
+        & frame["high"].ge(frame["close"])
+        & frame["low"].le(frame["open"])
+        & frame["low"].le(frame["close"])
+    )
+    return pd.DataFrame(
+        {
+            "non_finite": ~np.isfinite(numeric.to_numpy()).all(axis=1),
+            "non_positive_price": ~prices.gt(0).all(axis=1),
+            "negative_volume": frame["volume"].lt(0),
+            "invalid_relationship": invalid_relationship,
+        },
+        index=frame.index,
+    )
+
+
+def _invalid_observation_mask(frame: pd.DataFrame) -> pd.Series:
+    """Return rows with at least one canonical numeric or OHLC violation."""
+
+    return _ohlcv_violation_masks(frame).any(axis=1)
+
+
 def _require_columns(frame: pd.DataFrame) -> None:
     columns = list(frame.columns)
     if len(columns) != len(set(columns)):
@@ -136,20 +165,14 @@ def validate_ohlcv(frame: pd.DataFrame) -> None:
     if not frame["date"].equals(frame["date"].dt.normalize()):
         raise OHLCVValidationError("date values must be normalized to midnight")
 
-    values = frame.loc[:, list(_NUMERIC_COLUMNS)].to_numpy()
-    if not np.isfinite(values).all():
+    violations = _ohlcv_violation_masks(frame)
+    if violations["non_finite"].any():
         raise OHLCVValidationError("OHLCV values must be finite")
-    if not frame.loc[:, list(_PRICE_COLUMNS)].gt(0).all().all():
+    if violations["non_positive_price"].any():
         raise OHLCVValidationError("OHLC prices must be positive")
-    if not frame["volume"].ge(0).all():
+    if violations["negative_volume"].any():
         raise OHLCVValidationError("volume must be non-negative")
-
-    if not (
-        frame["low"].le(frame["open"])
-        & frame["open"].le(frame["high"])
-        & frame["low"].le(frame["close"])
-        & frame["close"].le(frame["high"])
-    ).all():
+    if violations["invalid_relationship"].any():
         raise OHLCVValidationError("OHLC values violate low/high bounds")
 
     if frame.duplicated(["date", "symbol"]).any():

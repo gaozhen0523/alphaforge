@@ -1,4 +1,4 @@
-# Day 1 Data Source Review
+# Data Source and Quality Semantics
 
 AlphaForge 需要约 100–300 只 A 股、约五年的日频 OHLCV。MVP 的数据获取层应可替换；任何 source-specific output（数据源特定输出）都必须先转换为 canonical schema，再提供给下游模块。
 
@@ -66,3 +66,28 @@ MVP 将 consolidated dataset 写入 `data/processed/ohlcv_hfq.parquet`。持久�
 `MarketDataLoader` 读取单个 canonical Parquet dataset，并可按 inclusive `start_date`、inclusive `end_date` 和 canonical `symbols` 过滤。返回结果包含七个 canonical columns，按 `date, symbol` 排序，并对 source dataset 和结果 frame 都执行 validation。
 
 Requested symbols 必须唯一，并使用完全一致的 AlphaForge canonical form。如果任何 requested symbol 不存在于完整 dataset，loader 会明确报错，不会静默返回 partial selection。合法 filter 的 date window 没有 observations 时，返回 validated canonical empty DataFrame。loader 不创建 calendar rows、不填充停牌日，也不修改 OHLCV values。
+
+## Day 8 Data Quality Semantics
+
+Production factor 和 return research 统一使用 `hfq` adjusted OHLC。复权价格用于避免 dividends、splits 等 corporate actions 造成机械价格 jump；它是 research price series，不应描述为当时市场真实 quoted execution price。
+
+Canonical observed row 必须满足 `(date, symbol)` 唯一、OHLCV 无 NaN/inf、OHLC 严格为正、volume 非负，并满足：
+
+```text
+low <= open <= high
+low <= close <= high
+```
+
+违反 contract 的 canonical data 明确失败，不自动 drop、修值或补 row。Data Layer 保持 unbalanced observed panel；所有 observed global dates × observed symbols 只用于 coverage diagnostics，不会生成 synthetic OHLCV observations。
+
+Diagnostics 中，missing observation 是 expected panel 中不存在的 `(date, symbol)`。对单个 symbol，位于 first 和 last observed global date 之间的 gap 记为 internal missing，其余记为 boundary missing。这只是 gap location 的描述：missing 可能来自 suspension、IPO/history boundary、delisting、provider gap 或其他原因；当前不把 internal missing 自动分类为 suspension，也不把 boundary missing 自动分类为 IPO / delisting。
+
+`duplicate_pairs` 统计出现超过一次的 unique `(date, symbol)` keys；`invalid_observations` 统计至少违反一项 numeric / OHLC rule 的 rows，duplicate 单独报告。`coverage_ratio = observed_unique_rows / expected_panel_rows`。
+
+Downstream semantics 保持不变：
+
+- factor rolling 和 research forward horizon 使用 future/past available observations，而不是补出的 exchange-calendar rows；
+- Backtest valuation 对 close 做 past-only forward fill，missing observation 当天 return 为 `0`，下次真实 close 一次体现累计价格变化；
+- valuation forward fill 只是 marking convention，不代表现实中可交易；
+- Week 1 execution 仍理想化假设 marked close 可以成交，不模拟 suspension、limit up/down、liquidity 或 market impact constraints；
+- frozen current-membership CSI300 仍存在 survivorship / membership bias，Day 8 不解决该 limitation。

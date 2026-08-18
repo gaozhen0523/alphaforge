@@ -60,7 +60,7 @@ Data
 
 > **从“能跑”变成“可信、能写简历”。**
 
-### Day 8 — Data Quality
+### Day 8 — Data Quality: DONE
 
 - 补 missing / duplicate / invalid data 校验。
 - 明确 adjustment、停牌等处理规则。

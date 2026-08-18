@@ -37,6 +37,7 @@ Market Data → Factor → Signal → Portfolio → Execution → PnL → Metric
 - 约 5 年数据
 - OHLCV
 - 本地 Parquet
+- Production research 使用 `hfq` adjusted OHLC；Data Layer 保留 unbalanced observed panel，不生成 synthetic OHLCV rows
 
 ### Factors
 
@@ -88,6 +89,9 @@ Unbalanced panel 使用 past-only forward-filled close marking；缺失 observat
 当天 return 为 0，下次真实 close 出现时一次性体现累计价格变化。Week 1 execution
 假设可按 marked close 成交，不模拟 suspension、limit up/down、liquidity 或 market
 impact。
+
+Past-only forward fill 是 valuation marking convention，不代表现实 tradability；
+adjusted research price 也不是当时市场真实 quoted execution price。
 
 必须处理：
 

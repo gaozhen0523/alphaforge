@@ -21,6 +21,7 @@ from .schema import (
     normalize_ohlcv,
     validate_ohlcv,
 )
+from .quality import summarize_ohlcv_quality
 from .symbols import a_share_code_to_canonical_symbol, validate_canonical_symbol
 from .universe import (
     CSI300_INDEX_CODE,
@@ -50,6 +51,7 @@ __all__ = [
     "load_universe_symbols",
     "normalize_ohlcv",
     "normalize_csi300_constituents",
+    "summarize_ohlcv_quality",
     "validate_ohlcv",
     "validate_canonical_symbol",
     "write_canonical_parquet",

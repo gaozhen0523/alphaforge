@@ -42,13 +42,29 @@ def test_duplicate_date_symbol_is_rejected() -> None:
 
 @pytest.mark.parametrize(
     ("column", "value"),
-    [("open", 12.0), ("close", 8.0), ("low", -1.0)],
+    [("open", 12.0), ("close", 8.0), ("high", 8.0)],
 )
 def test_invalid_ohlc_is_rejected(column: str, value: float) -> None:
     frame = raw_frame().iloc[[0]].copy()
     frame.loc[:, column] = value
 
     with pytest.raises(OHLCVValidationError, match="OHLC"):
+        normalize_ohlcv(frame)
+
+
+def test_non_positive_price_is_rejected() -> None:
+    frame = raw_frame().iloc[[0]].copy()
+    frame.loc[:, "open"] = 0.0
+
+    with pytest.raises(OHLCVValidationError, match="must be positive"):
+        normalize_ohlcv(frame)
+
+
+def test_non_finite_ohlcv_is_rejected() -> None:
+    frame = raw_frame().iloc[[0]].copy()
+    frame["volume"] = np.inf
+
+    with pytest.raises(OHLCVValidationError, match="must be finite"):
         normalize_ohlcv(frame)
 
 
