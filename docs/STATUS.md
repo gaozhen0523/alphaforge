@@ -6,7 +6,7 @@ Week 2 — Resume-Ready MVP
 
 ## Current Day
 
-Day 10 — Out-of-Sample: DONE
+Day 11 — Cost Analysis: DONE
 
 ## Day 1 — Data: DONE
 
@@ -187,6 +187,18 @@ Frozen baseline strategy production results：
 - Interpretation：factor IC / extreme-quantile spread 的 magnitude 明显 time-varying，且 IC 与 Q5−Q1 sign 不必一致；strategy OOS performance 高于 IS 仅作为 frozen-rule chronological evidence，不用于回头修改 baseline。
 - Limitation：这些 OOS results 可能在 Day 12 的后续 factor combination research 中被再次查看，因此是 retrospective chronological robustness evidence，不是 permanently untouched final holdout。
 
+## Day 11 — Cost Analysis: DONE
+
+- Core APIs：新增 `run_cost_sensitivity` 和 `summarize_turnover`；每个 cost scenario 直接复用 Day 5 `run_backtest` 与 Day 6 `summarize_performance`，未建立第二套 return / cost accounting。
+- Production scenarios：固定 transaction cost / slippage 为 `(0, 0)`、`(2.5, 2.5)`、`(5, 5)`、`(10, 10)`、`(15, 15)`、`(25, 25)` bps，对应 total friction `0 / 5 / 10 / 20 / 30 / 50` bps；`5 + 5` bps 保持 frozen baseline。
+- Cost semantics：`gross_ending_nav = prod(1 + gross_return)`；gross / net cumulative return gap 只表示最终累计 performance difference，不称为 realized total cost。`total_cost_load` 是 daily cost rates 的 arithmetic sum，不是直接 compounded NAV loss。
+- Turnover semantics：完全复用 Day 5 `is_execution`、`gross_traded_weight` 和含 cash leg 的 half-L1 turnover；execution-level traded-weight statistics 只在既有 `is_execution=True` 日期上计算，包括结果为 zero trade weight 的 scheduled execution。不同 cost assumptions 不改变 frozen trading / turnover path。
+- Runner：新增 `uv run python scripts/run_cost_analysis.py`，目标 outputs 为 `outputs/baseline/cost_sensitivity.csv` 和 `turnover_summary.csv`，不修改 `baseline.toml`。
+- Tests：新增 zero-cost gross/net equality、higher-cost performance erosion、cost-invariant trading path，以及 `5 + 5` bps sensitivity 对现有 backtest / analytics accounting 的直接复现。
+- Verification / production results：Codex sandbox 中 `uv` 初始化 user cache 失败，pytest 未进入 collection，production runner 未执行，因此本轮不生成 CSV、不记录或猜测 production numbers。需本地运行 `uv run pytest tests/test_cost_analysis.py tests/test_backtest.py tests/test_analytics.py` 和 `uv run python scripts/run_cost_analysis.py`。
+- Interpretation：该分析仅量化 frozen turnover path 在不同 linear friction assumptions 下对 gross performance 的侵蚀，不据此修改 factor、portfolio、rebalance frequency 或 execution。
+- Limitations：cost 与 slippage 在当前模型中数学形式相同，因此不做二维 grid；不包含 bid/ask、liquidity、market impact 或 tradability model。
+
 ## Known Limitations
 
 - Frozen current-membership CSI300 universe 存在 survivorship / membership bias。
@@ -195,7 +207,7 @@ Frozen baseline strategy production results：
 - Longer-horizon forward returns overlap；daily IC observations 不应解释为完全 independent，当前 ICIR 也不用于严格统计显著性判断。
 - Week 1 假设可以按 past-only marked close 理想化成交；不模拟 suspension 无法成交、limit up/down、bid/ask、volume participation、liquidity 或 market impact。
 
-## Next — Day 11: Cost Analysis
+## Next — Day 12: Factor Combination
 
-- transaction cost / slippage sensitivity
-- analyze turnover impact without changing the frozen baseline
+- simple rank / z-score factor combination
+- no ML and no changes to the frozen Day 11 baseline
