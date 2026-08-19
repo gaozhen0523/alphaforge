@@ -193,10 +193,24 @@ Frozen baseline strategy production results：
 - Production scenarios：固定 transaction cost / slippage 为 `(0, 0)`、`(2.5, 2.5)`、`(5, 5)`、`(10, 10)`、`(15, 15)`、`(25, 25)` bps，对应 total friction `0 / 5 / 10 / 20 / 30 / 50` bps；`5 + 5` bps 保持 frozen baseline。
 - Cost semantics：`gross_ending_nav = prod(1 + gross_return)`；gross / net cumulative return gap 只表示最终累计 performance difference，不称为 realized total cost。`total_cost_load` 是 daily cost rates 的 arithmetic sum，不是直接 compounded NAV loss。
 - Turnover semantics：完全复用 Day 5 `is_execution`、`gross_traded_weight` 和含 cash leg 的 half-L1 turnover；execution-level traded-weight statistics 只在既有 `is_execution=True` 日期上计算，包括结果为 zero trade weight 的 scheduled execution。不同 cost assumptions 不改变 frozen trading / turnover path。
-- Runner：新增 `uv run python scripts/run_cost_analysis.py`，目标 outputs 为 `outputs/baseline/cost_sensitivity.csv` 和 `turnover_summary.csv`，不修改 `baseline.toml`。
+- Runner：新增 `uv run python scripts/run_cost_analysis.py`，已生成 `outputs/baseline/cost_sensitivity.csv` 和 `turnover_summary.csv`，不修改 `baseline.toml`。
 - Tests：新增 zero-cost gross/net equality、higher-cost performance erosion、cost-invariant trading path，以及 `5 + 5` bps sensitivity 对现有 backtest / analytics accounting 的直接复现。
-- Verification / production results：Codex sandbox 中 `uv` 初始化 user cache 失败，pytest 未进入 collection，production runner 未执行，因此本轮不生成 CSV、不记录或猜测 production numbers。需本地运行 `uv run pytest tests/test_cost_analysis.py tests/test_backtest.py tests/test_analytics.py` 和 `uv run python scripts/run_cost_analysis.py`。
-- Interpretation：该分析仅量化 frozen turnover path 在不同 linear friction assumptions 下对 gross performance 的侵蚀，不据此修改 factor、portfolio、rebalance frequency 或 execution。
+- Verified tests：`uv run pytest tests/test_cost_analysis.py tests/test_backtest.py tests/test_analytics.py` → `16 passed in 0.98s`；production runner 成功完成 6 个 scenarios。
+
+Cost sensitivity production results：
+
+| Total friction | Annualized return | Sharpe | Cumulative return | Ending NAV |
+|---:|---:|---:|---:|---:|
+| 0 bps | 15.7488% | 0.7223 | 102.0614% | 2.0206 |
+| 5 bps | 13.5288% | 0.6430 | 84.0912% | 1.8409 |
+| 10 bps baseline | 11.3505% | 0.5635 | 67.7131% | 1.6771 |
+| 20 bps | 7.1161% | 0.4041 | 39.1832% | 1.3918 |
+| 30 bps | 3.0396% | 0.2443 | 15.4897% | 1.1549 |
+| 50 bps | -4.6627% | -0.0757 | -20.5188% | 0.7948 |
+
+- Production turnover：`255` scheduled executions；total gross traded weight `186.24369232`；mean / median / max execution gross traded weight `0.73036742 / 0.72145482 / 1.37753248`；total / average daily / annualized turnover `93.62184616 / 0.07724575 / 19.46592841`。
+- Gross baseline：gross cumulative return `102.06138410%`、gross ending NAV `2.02061384`；10 bps baseline net cumulative return `67.71308486%`，gross / net cumulative performance gap `34.34829925%`。Baseline `total_cost_load = 0.18624369` 是 daily cost rates 的 arithmetic sum，不是 compounded NAV loss。
+- Interpretation：performance 随 friction 上升持续恶化；10 bps frozen baseline 已将 ending NAV 从 zero-cost `2.0206` 降至 `1.6771`，50 bps scenario 则使 cumulative return 转负。该结果量化 frozen high-turnover path 的 cost sensitivity，不据此修改 factor、portfolio、rebalance frequency 或 execution。
 - Limitations：cost 与 slippage 在当前模型中数学形式相同，因此不做二维 grid；不包含 bid/ask、liquidity、market impact 或 tradability model。
 
 ## Known Limitations
