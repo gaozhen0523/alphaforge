@@ -221,9 +221,26 @@ Cost sensitivity production results：
 - Missing semantics：strict complete-case；任一 required normalized factor 为 `NaN` 时 composite 为 `NaN`，不填充也不按剩余 factors 重新加权。
 - Reuse：full-sample research、period-local OOS labels、weekly Q5 portfolio、next-global-date execution、cost / slippage accounting、continuous strategy state 和 analytics 均直接复用 Day 3–10 APIs。
 - Outputs：runner 生成 `factor_combination_research.csv` 和 `factor_combination_strategy.csv`，覆盖 full sample 与固定 IS 2021–2023 / OOS 2024 / OOS 2025；`combined_rank` / `combined_zscore` 明确标记为 experimental，frozen momentum baseline 不变。
-- Production results：Codex sandbox 中不运行 `uv`，未生成或猜测 production 数字；待本地执行 runner 后写回本节。
-- Interpretation / limitations：IS/OOS 结果仅是 retrospective chronological robustness evidence，不是 permanently untouched final holdout；不使用 ML、weight optimization、IC weighting、winsorization 或 parameter tuning。
-- Tests：新增逐日横截面边界、方向（含 volatility）、strict complete-case、no-look-ahead，以及 rank / z-score 接入既有 portfolio/backtest timing 的 deterministic integration tests；尚待本地 `uv run pytest` 验证。
+- Factor research production results：
+
+| Factor | FULL mean IC | FULL ICIR | FULL Q5−Q1 | IS mean IC | OOS 2024 mean IC | OOS 2025 mean IC |
+|---|---:|---:|---:|---:|---:|---:|
+| `combined_rank` | 0.03007629 | 0.14232647 | -0.00047727 | 0.02774593 | 0.04042267 | 0.02402427 |
+| `combined_zscore` | 0.02847513 | 0.13181611 | -0.00061177 | 0.02442320 | 0.04100503 | 0.02538836 |
+
+- 两种 combination 在 IS / 2024 / 2025 均保持 positive mean IC。
+- Full-sample strategy production results：
+
+| Strategy | Annualized return | Volatility | Sharpe | Max drawdown | Total turnover |
+|---|---:|---:|---:|---:|---:|
+| Momentum baseline | 11.3505% | 24.3017% | 0.5635 | -35.6364% | 93.6218 |
+| Combined Rank | 10.3922% | 15.9142% | 0.7008 | -23.0862% | 142.7879 |
+| Combined Z-score | 9.5187% | 15.5223% | 0.6633 | -24.1685% | 133.4754 |
+
+- Interpretation：rank / z-score 结果相近，结论对 normalization choice 较稳健。Composite mean IC / ICIR 较稳定，但 Q1–Q5 return profile 非单调，FULL sample 中 Q1 raw mean return 高于 Q5，因此 positive IC 不等于 positive Q5−Q1 spread。
+- Strategy interpretation：combination 未提高 absolute return，但明显降低 volatility / drawdown 并提高 Sharpe，体现 signal diversification / risk-profile improvement，代价是 turnover 明显提高。2024 combination 明显优于 momentum，而 2025 momentum 更强，说明不同 signal 暴露存在明显 time variation。
+- Limitations：不根据结果调 factor weights、flip directions 或修改 frozen baseline；2024 / 2025 仍仅是 retrospective chronological robustness evidence，不是 permanently untouched final holdout。
+- Validation：targeted tests `31 passed`；full suite `196 passed, 2 expected ConstantInputWarning`。
 
 ## Known Limitations
 
