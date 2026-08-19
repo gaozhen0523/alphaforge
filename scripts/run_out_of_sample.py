@@ -1,3 +1,4 @@
+#scripts/run_out_of_sample.py
 """Run Day 10 factor and frozen-strategy out-of-sample evaluation."""
 
 from __future__ import annotations
@@ -11,12 +12,13 @@ import pandas as pd
 from alphaforge.analytics import summarize_performance_by_period
 from alphaforge.backtest import run_backtest
 from alphaforge.data import MarketDataLoader
-from alphaforge.factors import momentum, reversal, volatility
-from alphaforge.pipeline import load_pipeline_config
+from alphaforge.pipeline import (
+    BASELINE_CONFIG_PATH,
+    compute_baseline_factors,
+    load_pipeline_config,
+)
 from alphaforge.portfolio import build_long_only_top_quantile_portfolio
 from alphaforge.research import run_out_of_sample_research
-
-DEFAULT_CONFIG_PATH = Path("configs/baseline.toml")
 
 
 def save_out_of_sample_outputs(
@@ -43,14 +45,15 @@ def build_parser() -> argparse.ArgumentParser:
         "config",
         nargs="?",
         type=Path,
-        default=DEFAULT_CONFIG_PATH,
-        help=f"pipeline TOML path (default: {DEFAULT_CONFIG_PATH})",
+        default=BASELINE_CONFIG_PATH,
+        help=f"pipeline TOML path (default: {BASELINE_CONFIG_PATH})",
     )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    print(f"Loading config: {args.config}")
     config = load_pipeline_config(args.config)
 
     factor_config = config["factors"]
@@ -58,30 +61,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     portfolio_config = config["portfolio"]
     backtest_config = config["backtest"]
 
-    data = MarketDataLoader(config["data"]["processed_path"]).load()
-    momentum_name = f"momentum_{factor_config['momentum_window']}d"
-    reversal_name = f"reversal_{factor_config['reversal_window']}d"
-    volatility_name = f"volatility_{factor_config['volatility_window']}d"
-    data[momentum_name] = momentum(
-        data,
-        window=factor_config["momentum_window"],
-    )
-    data[reversal_name] = reversal(
-        data,
-        window=factor_config["reversal_window"],
-    )
-    data[volatility_name] = volatility(
-        data,
-        window=factor_config["volatility_window"],
-    )
+    data_path = config["data"]["processed_path"]
+    print(f"Loading market data: {data_path}")
+    market_data = MarketDataLoader(data_path).load()
+    print("Computing baseline factors...")
+    data = compute_baseline_factors(market_data, factor_config)
 
+    print("Running period-local factor research...")
     factor_research = run_out_of_sample_research(
         data,
         research_config["factors"],
-        horizon=1,
+        horizon=research_config["forward_horizon"],
         n_quantiles=research_config["n_quantiles"],
     )
 
+    print("Running continuous baseline backtest...")
     portfolio = build_long_only_top_quantile_portfolio(
         data,
         portfolio_config["factor"],
@@ -114,6 +108,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     )
 
+    print("\nSaving outputs...")
     paths = save_out_of_sample_outputs(
         factor_research,
         performance,

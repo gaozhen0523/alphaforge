@@ -2,19 +2,47 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
+from typing import Sequence
 
 from alphaforge.data import MarketDataLoader
-from alphaforge.factors import momentum
+from alphaforge.pipeline import (
+    BASELINE_CONFIG_PATH,
+    compute_baseline_factors,
+    load_pipeline_config,
+)
 from alphaforge.portfolio import build_long_only_top_quantile_portfolio
 
-DATA_PATH = Path("data/processed/ohlcv_hfq.parquet")
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "config",
+        nargs="?",
+        type=Path,
+        default=BASELINE_CONFIG_PATH,
+        help=f"pipeline TOML path (default: {BASELINE_CONFIG_PATH})",
+    )
+    return parser
 
 
-def main() -> None:
-    df = MarketDataLoader(DATA_PATH).load()
-    df["momentum_20d"] = momentum(df, window=20)
-    portfolio = build_long_only_top_quantile_portfolio(df, "momentum_20d")
+def main(argv: Sequence[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    print(f"Loading config: {args.config}")
+    config = load_pipeline_config(args.config)
+    portfolio_config = config["portfolio"]
+    data_path = config["data"]["processed_path"]
+
+    print(f"Loading market data: {data_path}")
+    market_data = MarketDataLoader(data_path).load()
+    print("Computing baseline factors and portfolio...")
+    df = compute_baseline_factors(market_data, config["factors"])
+    portfolio = build_long_only_top_quantile_portfolio(
+        df,
+        portfolio_config["factor"],
+        n_quantiles=portfolio_config["n_quantiles"],
+    )
 
     rebalance_dates = portfolio.loc[
         portfolio["is_rebalance"], "date"
@@ -31,7 +59,7 @@ def main() -> None:
     )
 
     print("Production target portfolio")
-    print(f"dataset: {DATA_PATH}")
+    print(f"dataset: {data_path}")
     print(f"rows: {len(portfolio):,}")
     print(f"symbols: {portfolio['symbol'].nunique():,}")
     print(
@@ -60,7 +88,8 @@ def main() -> None:
         f"{active_weight_sum.min():.12f}/{active_weight_sum.max():.12f}"
     )
     print(f"non-unit active dates: {non_unit_active_dates:,}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

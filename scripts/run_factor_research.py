@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
+from typing import Sequence
 
 from alphaforge.data import MarketDataLoader
-from alphaforge.factors import momentum, reversal, volatility
+from alphaforge.pipeline import (
+    BASELINE_CONFIG_PATH,
+    compute_baseline_factors,
+    load_pipeline_config,
+)
 from alphaforge.research import (
     assign_quantiles,
     compute_daily_ic,
@@ -16,19 +22,39 @@ from alphaforge.research import (
     summarize_quantile_returns,
 )
 
-DATA_PATH = Path("data/processed/ohlcv_hfq.parquet")
-FACTOR_COLUMNS = ("momentum_20d", "reversal_5d", "volatility_20d")
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "config",
+        nargs="?",
+        type=Path,
+        default=BASELINE_CONFIG_PATH,
+        help=f"pipeline TOML path (default: {BASELINE_CONFIG_PATH})",
+    )
+    return parser
 
 
-def main() -> None:
-    df = MarketDataLoader(DATA_PATH).load()
-    df["momentum_20d"] = momentum(df, window=20)
-    df["reversal_5d"] = reversal(df, window=5)
-    df["volatility_20d"] = volatility(df, window=20)
-    df["forward_return"] = compute_forward_return(df, horizon=1)
+def main(argv: Sequence[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    print(f"Loading config: {args.config}")
+    config = load_pipeline_config(args.config)
+    research_config = config["research"]
+    data_path = config["data"]["processed_path"]
+
+    print(f"Loading market data: {data_path}")
+    market_data = MarketDataLoader(data_path).load()
+    print("Computing baseline factors and forward returns...")
+    df = compute_baseline_factors(market_data, config["factors"])
+    df["forward_return"] = compute_forward_return(
+        df,
+        horizon=research_config["forward_horizon"],
+    )
+    factor_columns = research_config["factors"]
+    n_quantiles = research_config["n_quantiles"]
 
     print("Production factor research")
-    print(f"dataset: {DATA_PATH}")
+    print(f"dataset: {data_path}")
     print(f"dataset rows: {len(df):,}")
     print(f"date range: {df['date'].min().date()} to {df['date'].max().date()}")
     print(f"symbol count: {df['symbol'].nunique():,}")
@@ -37,7 +63,7 @@ def main() -> None:
         f"{int(df['forward_return'].notna().sum()):,}"
     )
 
-    for factor_col in FACTOR_COLUMNS:
+    for factor_col in factor_columns:
         ic = compute_daily_ic(df, factor_col)
         ic_summary = summarize_ic(ic)
 
@@ -47,11 +73,11 @@ def main() -> None:
         factor_data["quantile"] = assign_quantiles(
             factor_data,
             factor_col,
-            n_quantiles=5,
+            n_quantiles=n_quantiles,
         )
         quantile_returns = compute_quantile_returns(
             factor_data,
-            n_quantiles=5,
+            n_quantiles=n_quantiles,
         )
         quantile_summary = summarize_quantile_returns(quantile_returns)
 
@@ -71,7 +97,7 @@ def main() -> None:
         print(f"mean_ic: {ic_summary['mean_ic']:.8f}")
         print(f"ic_std: {ic_summary['ic_std']:.8f}")
         print(f"icir: {ic_summary['icir']:.8f}")
-        for quantile in range(1, 6):
+        for quantile in range(1, n_quantiles + 1):
             name = f"q{quantile}_mean"
             print(f"{name}: {quantile_summary[name]:.8f}")
         print(
@@ -81,11 +107,12 @@ def main() -> None:
 
     factor_correlation = compute_factor_correlation(
         df,
-        list(FACTOR_COLUMNS),
+        factor_columns,
     )
     print("\nMean daily cross-sectional Spearman factor correlation")
     print(factor_correlation.to_string(float_format=lambda value: f"{value:.6f}"))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

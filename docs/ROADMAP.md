@@ -86,7 +86,7 @@ Data
 - 做简单 rank / z-score 多因子组合。
 - 不引入 ML。
 
-### Day 13 — Engineering Cleanup
+### Day 13 — Engineering Cleanup: DONE
 
 - 清理 API、config、logging、tests。
 - 保证实验稳定复现。

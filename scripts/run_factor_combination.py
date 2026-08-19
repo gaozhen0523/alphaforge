@@ -16,8 +16,11 @@ from alphaforge.analytics import (
 )
 from alphaforge.backtest import run_backtest
 from alphaforge.data import MarketDataLoader
-from alphaforge.factors import momentum, reversal, volatility
-from alphaforge.pipeline import load_pipeline_config
+from alphaforge.pipeline import (
+    BASELINE_CONFIG_PATH,
+    compute_baseline_factors,
+    load_pipeline_config,
+)
 from alphaforge.portfolio import build_long_only_top_quantile_portfolio
 from alphaforge.research import (
     assign_oos_period,
@@ -33,7 +36,6 @@ from alphaforge.research import (
     summarize_quantile_returns,
 )
 
-DEFAULT_CONFIG_PATH = Path("configs/baseline.toml")
 OUTPUT_PERIOD_NAMES = {
     "is_2021_2023": "IS_2021_2023",
     "oos_2024": "OOS_2024",
@@ -137,13 +139,11 @@ def run_factor_combination(
     backtest_config = config["backtest"]
     annualization_factor = config["analytics"]["periods_per_year"]
 
-    data = MarketDataLoader(config["data"]["processed_path"]).load()
+    market_data = MarketDataLoader(config["data"]["processed_path"]).load()
     momentum_name = f"momentum_{factor_config['momentum_window']}d"
     reversal_name = f"reversal_{factor_config['reversal_window']}d"
     volatility_name = f"volatility_{factor_config['volatility_window']}d"
-    data[momentum_name] = momentum(data, factor_config["momentum_window"])
-    data[reversal_name] = reversal(data, factor_config["reversal_window"])
-    data[volatility_name] = volatility(data, factor_config["volatility_window"])
+    data = compute_baseline_factors(market_data, factor_config)
 
     # Ex-ante directions only: reversal is already negative trailing return.
     factor_directions = {
@@ -279,15 +279,17 @@ def build_parser() -> argparse.ArgumentParser:
         "config",
         nargs="?",
         type=Path,
-        default=DEFAULT_CONFIG_PATH,
-        help=f"pipeline TOML path (default: {DEFAULT_CONFIG_PATH})",
+        default=BASELINE_CONFIG_PATH,
+        help=f"pipeline TOML path (default: {BASELINE_CONFIG_PATH})",
     )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    print(f"Loading config: {args.config}")
     config = load_pipeline_config(args.config)
+    print("Running factor-combination research and backtests...")
     research, strategy = run_factor_combination(config)
 
     print("AlphaForge Day 12 factor combination")
@@ -306,6 +308,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     )
 
+    print("\nSaving outputs...")
     paths = save_factor_combination_outputs(
         research,
         strategy,

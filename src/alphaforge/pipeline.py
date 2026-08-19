@@ -25,6 +25,8 @@ from alphaforge.research import (
     summarize_quantile_returns,
 )
 
+BASELINE_CONFIG_PATH = Path("configs/baseline.toml")
+
 
 @dataclass(frozen=True)
 class FactorResearchResult:
@@ -56,6 +58,31 @@ def load_pipeline_config(path: str | Path) -> dict[str, Any]:
         return tomllib.load(config_file)
 
 
+def compute_baseline_factors(
+    market_data: pd.DataFrame,
+    factor_config: Mapping[str, Any],
+) -> pd.DataFrame:
+    """Return market data with the three configured baseline factors."""
+
+    result = market_data.copy()
+    momentum_window = factor_config["momentum_window"]
+    reversal_window = factor_config["reversal_window"]
+    volatility_window = factor_config["volatility_window"]
+    result[f"momentum_{momentum_window}d"] = momentum(
+        result,
+        window=momentum_window,
+    )
+    result[f"reversal_{reversal_window}d"] = reversal(
+        result,
+        window=reversal_window,
+    )
+    result[f"volatility_{volatility_window}d"] = volatility(
+        result,
+        window=volatility_window,
+    )
+    return result
+
+
 def run_pipeline(config: Mapping[str, Any]) -> PipelineResult:
     """Run data -> factors -> research -> portfolio -> backtest -> analytics.
 
@@ -70,19 +97,10 @@ def run_pipeline(config: Mapping[str, Any]) -> PipelineResult:
     backtest_config = config["backtest"]
     analytics_config = config["analytics"]
 
-    factor_data = MarketDataLoader(config["data"]["processed_path"]).load()
-
-    momentum_name = f"momentum_{factor_config['momentum_window']}d"
-    reversal_name = f"reversal_{factor_config['reversal_window']}d"
-    volatility_name = f"volatility_{factor_config['volatility_window']}d"
-    factor_data[momentum_name] = momentum(
-        factor_data, window=factor_config["momentum_window"]
-    )
-    factor_data[reversal_name] = reversal(
-        factor_data, window=factor_config["reversal_window"]
-    )
-    factor_data[volatility_name] = volatility(
-        factor_data, window=factor_config["volatility_window"]
+    market_data = MarketDataLoader(config["data"]["processed_path"]).load()
+    factor_data = compute_baseline_factors(
+        market_data,
+        factor_config,
     )
     factor_data["forward_return"] = compute_forward_return(
         factor_data, horizon=research_config["forward_horizon"]

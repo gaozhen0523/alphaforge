@@ -7,12 +7,17 @@ import numpy as np
 import pandas as pd
 
 from alphaforge.data import normalize_ohlcv
-from alphaforge.pipeline import load_pipeline_config, run_pipeline
+from alphaforge.pipeline import (
+    BASELINE_CONFIG_PATH,
+    compute_baseline_factors,
+    load_pipeline_config,
+    run_pipeline,
+)
 from scripts.run_pipeline import save_pipeline_outputs
 
 
 def test_baseline_config_loading() -> None:
-    config = load_pipeline_config(Path("configs/baseline.toml"))
+    config = load_pipeline_config(BASELINE_CONFIG_PATH)
 
     assert config["data"]["processed_path"] == (
         "data/processed/ohlcv_hfq.parquet"
@@ -24,6 +29,11 @@ def test_baseline_config_loading() -> None:
     }
     assert config["research"]["forward_horizon"] == 1
     assert config["research"]["n_quantiles"] == 5
+    assert config["research"]["factors"] == [
+        "momentum_20d",
+        "reversal_5d",
+        "volatility_20d",
+    ]
     assert config["portfolio"] == {
         "factor": "momentum_20d",
         "n_quantiles": 5,
@@ -34,6 +44,33 @@ def test_baseline_config_loading() -> None:
     }
     assert config["analytics"]["periods_per_year"] == 252
     assert config["output"]["directory"] == "outputs/baseline"
+
+
+def test_compute_baseline_factors_has_clear_copy_semantics() -> None:
+    market_data = pd.DataFrame(
+        {
+            "date": pd.date_range("2024-01-02", periods=4),
+            "symbol": ["A"] * 4,
+            "close": [100.0, 101.0, 103.0, 102.0],
+        }
+    )
+    factor_config = {
+        "momentum_window": 2,
+        "reversal_window": 1,
+        "volatility_window": 2,
+    }
+
+    result = compute_baseline_factors(market_data, factor_config)
+
+    assert market_data.columns.tolist() == ["date", "symbol", "close"]
+    assert result.columns.tolist() == [
+        "date",
+        "symbol",
+        "close",
+        "momentum_2d",
+        "reversal_1d",
+        "volatility_2d",
+    ]
 
 
 def test_tiny_deterministic_end_to_end_pipeline(tmp_path: Path) -> None:
@@ -69,7 +106,7 @@ def test_tiny_deterministic_end_to_end_pipeline(tmp_path: Path) -> None:
 
     data_path = tmp_path / "ohlcv.parquet"
     normalize_ohlcv(pd.DataFrame(rows)).to_parquet(data_path, index=False)
-    config = load_pipeline_config(Path("configs/baseline.toml"))
+    config = load_pipeline_config(BASELINE_CONFIG_PATH)
     config["data"]["processed_path"] = str(data_path)
 
     result = run_pipeline(config)
@@ -118,6 +155,12 @@ def test_tiny_deterministic_end_to_end_pipeline(tmp_path: Path) -> None:
 
     assert output_dir.is_dir()
     assert all(path.is_file() for path in output_paths.values())
+    assert save_pipeline_outputs(result, output_dir) == output_paths
+    assert {path.name for path in output_dir.iterdir()} == {
+        "factor_research.csv",
+        "daily_backtest.parquet",
+        "performance.json",
+    }
 
     factor_summary = pd.read_csv(output_paths["factor_research"])
     assert set(factor_summary["factor"]) == {

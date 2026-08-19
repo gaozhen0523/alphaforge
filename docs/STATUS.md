@@ -6,7 +6,7 @@ Week 2 — Resume-Ready MVP
 
 ## Current Day
 
-Day 12 — Factor Combination: DONE
+Day 13 — Engineering Cleanup: DONE
 
 ## Day 1 — Data: DONE
 
@@ -242,6 +242,15 @@ Cost sensitivity production results：
 - Limitations：不根据结果调 factor weights、flip directions 或修改 frozen baseline；2024 / 2025 仍仅是 retrospective chronological robustness evidence，不是 permanently untouched final holdout。
 - Validation：targeted tests `31 passed`；full suite `196 passed, 2 expected ConstantInputWarning`。
 
+## Day 13 — Engineering Cleanup: DONE
+
+- API：移除 package root 的 Day 0 `hello` / console placeholder；保留清晰的 subpackage public APIs。
+- Shared helper：新增 `compute_baseline_factors`，集中三条 baseline factor 的 config-driven 计算并明确 copy semantics；未抽象整个 research workflow。
+- Config / runners：所有 baseline stage runners 统一读取 canonical config 并增加轻量 stage progress output；Day 10 OOS horizon 不再硬编码；experiment-local horizons / lags / cost scenarios 保持 runner-local。
+- Tests / reproducibility：加强 frozen config、shared helper 和 deterministic overwrite / stable artifact naming coverage；所有 runners 继续覆盖写入固定文件名，Day 9–12 不修改 `baseline.toml` 或 canonical pipeline artifacts。
+- Validation：完成 static review 与 `git diff --check`；按已知 sandbox 限制未运行 `uv` / pytest。
+- Semantics：未修改 factor、research、portfolio、execution、turnover、cost、return 或 NAV semantics。
+
 ## Known Limitations
 
 - Frozen current-membership CSI300 universe 存在 survivorship / membership bias。
@@ -250,7 +259,7 @@ Cost sensitivity production results：
 - Longer-horizon forward returns overlap；daily IC observations 不应解释为完全 independent，当前 ICIR 也不用于严格统计显著性判断。
 - Week 1 假设可以按 past-only marked close 理想化成交；不模拟 suspension 无法成交、limit up/down、bid/ask、volume participation、liquidity 或 market impact。
 
-## Next — Day 13: Engineering Cleanup
+## Next — Day 14: Resume Ready
 
-- clean APIs, config, logging, and tests
-- preserve reproducible frozen experiments
+- README、架构图、结果与 limitations
+- 第一版简历 bullets 和项目介绍

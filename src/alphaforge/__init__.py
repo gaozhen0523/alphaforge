@@ -1,4 +1,1 @@
-from ._core import hello
-
-def main() -> None:
-    print("Hello from alphaforge!")
+"""AlphaForge cross-sectional quant research and backtesting engine."""

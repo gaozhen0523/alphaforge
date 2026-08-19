@@ -10,12 +10,11 @@ from typing import Sequence
 import pandas as pd
 
 from alphaforge.pipeline import (
+    BASELINE_CONFIG_PATH,
     PipelineResult,
     load_pipeline_config,
     run_pipeline,
 )
-
-DEFAULT_CONFIG_PATH = Path("configs/baseline.toml")
 
 
 def save_pipeline_outputs(
@@ -64,15 +63,17 @@ def build_parser() -> argparse.ArgumentParser:
         "config",
         nargs="?",
         type=Path,
-        default=DEFAULT_CONFIG_PATH,
-        help=f"pipeline TOML path (default: {DEFAULT_CONFIG_PATH})",
+        default=BASELINE_CONFIG_PATH,
+        help=f"pipeline TOML path (default: {BASELINE_CONFIG_PATH})",
     )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    print(f"Loading config: {args.config}")
     config = load_pipeline_config(args.config)
+    print("Running baseline research and backtest...")
     result = run_pipeline(config)
 
     data = result.factor_data
@@ -121,6 +122,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"Max drawdown: {performance['max_drawdown']:.8%}")
     print(f"Annualized turnover: {performance['annualized_turnover']:.8f}")
 
+    print("\nSaving outputs...")
     output_paths = save_pipeline_outputs(result, config["output"]["directory"])
     print("\nOutputs")
     print(f"Factor research: {output_paths['factor_research']}")

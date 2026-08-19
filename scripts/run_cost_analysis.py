@@ -13,10 +13,9 @@ from alphaforge.analytics import run_cost_sensitivity, summarize_turnover
 from alphaforge.backtest import run_backtest
 from alphaforge.data import MarketDataLoader
 from alphaforge.factors import momentum
-from alphaforge.pipeline import load_pipeline_config
+from alphaforge.pipeline import BASELINE_CONFIG_PATH, load_pipeline_config
 from alphaforge.portfolio import build_long_only_top_quantile_portfolio
 
-DEFAULT_CONFIG_PATH = Path("configs/baseline.toml")
 COST_SCENARIOS = (
     (0.0, 0.0),
     (2.5, 2.5),
@@ -55,20 +54,24 @@ def build_parser() -> argparse.ArgumentParser:
         "config",
         nargs="?",
         type=Path,
-        default=DEFAULT_CONFIG_PATH,
-        help=f"pipeline TOML path (default: {DEFAULT_CONFIG_PATH})",
+        default=BASELINE_CONFIG_PATH,
+        help=f"pipeline TOML path (default: {BASELINE_CONFIG_PATH})",
     )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    print(f"Loading config: {args.config}")
     config = load_pipeline_config(args.config)
     factor_config = config["factors"]
     portfolio_config = config["portfolio"]
     periods_per_year = config["analytics"]["periods_per_year"]
 
-    data = MarketDataLoader(config["data"]["processed_path"]).load()
+    data_path = config["data"]["processed_path"]
+    print(f"Loading market data: {data_path}")
+    data = MarketDataLoader(data_path).load()
+    print("Computing baseline momentum factor and portfolio...")
     factor_name = f"momentum_{factor_config['momentum_window']}d"
     data[factor_name] = momentum(
         data,
@@ -79,6 +82,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         portfolio_config["factor"],
         n_quantiles=portfolio_config["n_quantiles"],
     )
+    print("Running cost scenarios...")
     sensitivity = run_cost_sensitivity(
         data,
         portfolio,
@@ -130,6 +134,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"{baseline['gross_net_cumulative_return_gap']:.8%}"
     )
 
+    print("\nSaving outputs...")
     paths = save_cost_analysis_outputs(
         sensitivity,
         turnover,

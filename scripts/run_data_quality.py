@@ -3,19 +3,39 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
+from typing import Sequence
 
 from alphaforge.data import MarketDataLoader, summarize_ohlcv_quality
+from alphaforge.pipeline import BASELINE_CONFIG_PATH, load_pipeline_config
 
-DATA_PATH = Path("data/processed/ohlcv_hfq.parquet")
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "config",
+        nargs="?",
+        type=Path,
+        default=BASELINE_CONFIG_PATH,
+        help=f"pipeline TOML path (default: {BASELINE_CONFIG_PATH})",
+    )
+    return parser
 
 
-def main() -> None:
-    data = MarketDataLoader(DATA_PATH).load()
+def main(argv: Sequence[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    print(f"Loading config: {args.config}")
+    config = load_pipeline_config(args.config)
+    data_path = config["data"]["processed_path"]
+
+    print(f"Loading market data: {data_path}")
+    data = MarketDataLoader(data_path).load()
+    print("Summarizing data quality...")
     summary = summarize_ohlcv_quality(data)
 
     print("Production data quality")
-    print(f"dataset: {DATA_PATH}")
+    print(f"dataset: {data_path}")
     print(f"rows: {summary['rows']:,}")
     print(f"symbols: {summary['symbols']:,}")
     print(f"global dates: {summary['global_dates']:,}")
@@ -33,7 +53,8 @@ def main() -> None:
         "boundary missing observations: "
         f"{summary['boundary_missing_observations']:,}"
     )
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

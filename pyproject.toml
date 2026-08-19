@@ -18,9 +18,6 @@ dependencies = [
     "statsmodels>=0.14.6",
 ]
 
-[project.scripts]
-alphaforge = "alphaforge:main"
-
 [build-system]
 requires = [
     "scikit-build-core>=1.0.3",

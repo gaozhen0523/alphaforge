@@ -1,3 +1,5 @@
+# Frozen canonical baseline for the one-command pipeline. Experiment runners
+# consume these assumptions but do not modify canonical pipeline artifacts.
 [data]
 processed_path = "data/processed/ohlcv_hfq.parquet"
 
@@ -18,6 +20,8 @@ factor = "momentum_20d"
 n_quantiles = 5
 
 [backtest]
+# Execution timing remains fixed in run_backtest: decision(t) executes at the
+# next global trading-date close.
 transaction_cost_bps = 5.0
 slippage_bps = 5.0
 
