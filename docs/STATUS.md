@@ -6,7 +6,7 @@ Week 2 — Resume-Ready MVP
 
 ## Current Day
 
-Day 11 — Cost Analysis: DONE
+Day 12 — Factor Combination: DONE
 
 ## Day 1 — Data: DONE
 
@@ -213,6 +213,18 @@ Cost sensitivity production results：
 - Interpretation：performance 随 friction 上升持续恶化；10 bps frozen baseline 已将 ending NAV 从 zero-cost `2.0206` 降至 `1.6771`，50 bps scenario 则使 cumulative return 转负。该结果量化 frozen high-turnover path 的 cost sensitivity，不据此修改 factor、portfolio、rebalance frequency 或 execution。
 - Limitations：cost 与 slippage 在当前模型中数学形式相同，因此不做二维 grid；不包含 bid/ask、liquidity、market impact 或 tradability model。
 
+## Day 12 — Factor Combination: DONE
+
+- APIs：新增 `cross_sectional_zscore`、`combine_factors_by_rank` 和 `combine_factors_by_zscore`；production runner 为 `uv run python scripts/run_factor_combination.py`。
+- Combination semantics：rank 直接复用 Day 3 percentile rank，负方向使用 `1 - rank`；z-score 按 date 横截面计算，使用 population std（`ddof=0`），zero std 返回 `NaN`；三个方向统一后的 score 严格 equal weight。
+- Ex-ante directions：`momentum_20d = +1`；现有 `reversal_5d` 定义为 negative trailing 5-observation return，因此 `reversal_5d = +1`；low volatility desirable，因此 `volatility_20d = -1`。方向不根据 realized IC / Sharpe 学习。
+- Missing semantics：strict complete-case；任一 required normalized factor 为 `NaN` 时 composite 为 `NaN`，不填充也不按剩余 factors 重新加权。
+- Reuse：full-sample research、period-local OOS labels、weekly Q5 portfolio、next-global-date execution、cost / slippage accounting、continuous strategy state 和 analytics 均直接复用 Day 3–10 APIs。
+- Outputs：runner 生成 `factor_combination_research.csv` 和 `factor_combination_strategy.csv`，覆盖 full sample 与固定 IS 2021–2023 / OOS 2024 / OOS 2025；`combined_rank` / `combined_zscore` 明确标记为 experimental，frozen momentum baseline 不变。
+- Production results：Codex sandbox 中不运行 `uv`，未生成或猜测 production 数字；待本地执行 runner 后写回本节。
+- Interpretation / limitations：IS/OOS 结果仅是 retrospective chronological robustness evidence，不是 permanently untouched final holdout；不使用 ML、weight optimization、IC weighting、winsorization 或 parameter tuning。
+- Tests：新增逐日横截面边界、方向（含 volatility）、strict complete-case、no-look-ahead，以及 rank / z-score 接入既有 portfolio/backtest timing 的 deterministic integration tests；尚待本地 `uv run pytest` 验证。
+
 ## Known Limitations
 
 - Frozen current-membership CSI300 universe 存在 survivorship / membership bias。
@@ -221,7 +233,7 @@ Cost sensitivity production results：
 - Longer-horizon forward returns overlap；daily IC observations 不应解释为完全 independent，当前 ICIR 也不用于严格统计显著性判断。
 - Week 1 假设可以按 past-only marked close 理想化成交；不模拟 suspension 无法成交、limit up/down、bid/ask、volume participation、liquidity 或 market impact。
 
-## Next — Day 12: Factor Combination
+## Next — Day 13: Engineering Cleanup
 
-- simple rank / z-score factor combination
-- no ML and no changes to the frozen Day 11 baseline
+- clean APIs, config, logging, and tests
+- preserve reproducible frozen experiments

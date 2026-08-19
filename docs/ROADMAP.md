@@ -70,18 +70,18 @@ Data
 - factor decay、不同 forward horizon。
 - 检查结果稳定性。
 
-### Day 10 — Out-of-Sample
+### Day 10 — Out-of-Sample: DONE
 
 - time-based train / validation / test split。
 - evaluate factor robustness out of sample。
 - control overfitting / data snooping。
 
-### Day 11 — Cost Analysis
+### Day 11 — Cost Analysis: DONE
 
 - transaction cost / slippage sensitivity。
 - 分析 turnover 对收益的影响。
 
-### Day 12 — Factor Combination
+### Day 12 — Factor Combination: DONE
 
 - 做简单 rank / z-score 多因子组合。
 - 不引入 ML。
