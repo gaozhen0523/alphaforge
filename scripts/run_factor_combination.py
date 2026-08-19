@@ -20,11 +20,13 @@ from alphaforge.factors import momentum, reversal, volatility
 from alphaforge.pipeline import load_pipeline_config
 from alphaforge.portfolio import build_long_only_top_quantile_portfolio
 from alphaforge.research import (
+    assign_oos_period,
     assign_quantiles,
     combine_factors_by_rank,
     combine_factors_by_zscore,
     compute_daily_ic,
     compute_forward_return,
+    compute_period_forward_return,
     compute_quantile_returns,
     run_out_of_sample_research,
     summarize_ic,
@@ -63,8 +65,10 @@ def summarize_full_sample_research(
             n_quantiles=n_quantiles,
         )
         quantile_summary = summarize_quantile_returns(quantile_returns)
-        q1_mean = quantile_summary["q1_mean"]
-        q5_mean = quantile_summary[f"q{n_quantiles}_mean"]
+        quantile_means = {
+            f"q{quantile}_mean": quantile_summary[f"q{quantile}_mean"]
+            for quantile in range(1, n_quantiles + 1)
+        }
         rows.append(
             {
                 "factor": factor_col,
@@ -72,12 +76,54 @@ def summarize_full_sample_research(
                 "valid_ic_days": int(ic_summary["n_obs"]),
                 "mean_ic": ic_summary["mean_ic"],
                 "icir": ic_summary["icir"],
-                "q1_mean": q1_mean,
-                "q5_mean": q5_mean,
-                "q5_minus_q1": q5_mean - q1_mean,
+                **quantile_means,
+                "q5_minus_q1": (
+                    quantile_means[f"q{n_quantiles}_mean"]
+                    - quantile_means["q1_mean"]
+                ),
             }
         )
     return pd.DataFrame(rows)
+
+
+def add_period_quantile_means(
+    data: pd.DataFrame,
+    period_research: pd.DataFrame,
+    factor_cols: Sequence[str],
+    horizon: int,
+    n_quantiles: int,
+) -> pd.DataFrame:
+    """Add middle-quantile means using the established Day 3/10 APIs."""
+
+    result = period_research.copy()
+    for quantile in range(2, n_quantiles):
+        result[f"q{quantile}_mean"] = float("nan")
+
+    period = assign_oos_period(data["date"])
+    forward_return = compute_period_forward_return(data, horizon=horizon)
+    for factor_col in factor_cols:
+        for period_name in OUTPUT_PERIOD_NAMES:
+            in_period = period.eq(period_name)
+            research_frame = data.loc[in_period, ["date", factor_col]].copy()
+            research_frame["forward_return"] = forward_return.loc[in_period]
+            research_frame["quantile"] = assign_quantiles(
+                research_frame,
+                factor_col,
+                n_quantiles=n_quantiles,
+            )
+            quantile_returns = compute_quantile_returns(
+                research_frame,
+                n_quantiles=n_quantiles,
+            )
+            quantile_summary = summarize_quantile_returns(quantile_returns)
+            output_row = result["factor"].eq(factor_col) & result["period"].eq(
+                period_name
+            )
+            for quantile in range(2, n_quantiles):
+                result.loc[output_row, f"q{quantile}_mean"] = quantile_summary[
+                    f"q{quantile}_mean"
+                ]
+    return result
 
 
 def run_factor_combination(
@@ -133,13 +179,32 @@ def run_factor_combination(
         horizon=research_config["forward_horizon"],
         n_quantiles=research_config["n_quantiles"],
     )
+    period_research = add_period_quantile_means(
+        data,
+        period_research,
+        factor_cols,
+        horizon=research_config["forward_horizon"],
+        n_quantiles=research_config["n_quantiles"],
+    )
     period_research["period"] = period_research["period"].map(
         OUTPUT_PERIOD_NAMES
     )
+    research_columns = [
+        "factor",
+        "period",
+        "valid_ic_days",
+        "mean_ic",
+        "icir",
+        *[
+            f"q{quantile}_mean"
+            for quantile in range(1, research_config["n_quantiles"] + 1)
+        ],
+        "q5_minus_q1",
+    ]
     research = pd.concat(
         [full_research, period_research],
         ignore_index=True,
-    )
+    ).loc[:, research_columns]
 
     strategy_rows = []
     strategies = (

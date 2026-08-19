@@ -10,7 +10,13 @@ from alphaforge.portfolio import build_long_only_top_quantile_portfolio
 from alphaforge.research import (
     combine_factors_by_rank,
     combine_factors_by_zscore,
+    compute_forward_return,
     cross_sectional_zscore,
+    run_out_of_sample_research,
+)
+from scripts.run_factor_combination import (
+    add_period_quantile_means,
+    summarize_full_sample_research,
 )
 
 
@@ -106,6 +112,58 @@ def test_future_factor_changes_do_not_change_past_combinations() -> None:
 
     pd.testing.assert_series_equal(actual_rank, expected_rank)
     pd.testing.assert_series_equal(actual_zscore, expected_zscore)
+
+
+def test_research_outputs_expose_every_quantile_mean() -> None:
+    rows = []
+    period_dates = (
+        ("2023-12-28", "2023-12-29"),
+        ("2024-12-30", "2024-12-31"),
+        ("2025-12-30", "2025-12-31"),
+    )
+    for first_date, second_date in period_dates:
+        for number, symbol in enumerate(["A", "B", "C", "D", "E"], start=1):
+            rows.extend(
+                [
+                    {
+                        "date": pd.Timestamp(first_date),
+                        "symbol": symbol,
+                        "close": 100.0,
+                        "factor": float(number),
+                    },
+                    {
+                        "date": pd.Timestamp(second_date),
+                        "symbol": symbol,
+                        "close": 100.0 + number,
+                        "factor": float(number),
+                    },
+                ]
+            )
+    data = (
+        pd.DataFrame(rows)
+        .sort_values(["date", "symbol"])
+        .reset_index(drop=True)
+    )
+    data["forward_return"] = compute_forward_return(data)
+
+    full = summarize_full_sample_research(data, ["factor"], n_quantiles=5)
+    period = run_out_of_sample_research(data, ["factor"])
+    period = add_period_quantile_means(
+        data,
+        period,
+        ["factor"],
+        horizon=1,
+        n_quantiles=5,
+    )
+
+    quantile_columns = [f"q{quantile}_mean" for quantile in range(1, 6)]
+    assert set(quantile_columns).issubset(full.columns)
+    assert set(quantile_columns).issubset(period.columns)
+    np.testing.assert_allclose(
+        period[quantile_columns],
+        [[0.01, 0.02, 0.03, 0.04, 0.05]] * 3,
+    )
+    np.testing.assert_allclose(period["q5_minus_q1"], 0.04)
 
 
 @pytest.mark.parametrize(
