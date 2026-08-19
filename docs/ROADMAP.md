@@ -54,7 +54,7 @@ Data
 
 完整可运行。
 
-## Week 2 — Resume-Ready MVP
+## Week 2 — Resume-Ready MVP: DONE
 
 目标：
 
@@ -91,7 +91,7 @@ Data
 - 清理 API、config、logging、tests。
 - 保证实验稳定复现。
 
-### Day 14 — Resume Ready
+### Day 14 — Resume Ready: DONE
 
 - README、架构图、结果、limitations。
 - 写第一版简历 bullets 和项目介绍。

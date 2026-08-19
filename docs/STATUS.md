@@ -2,11 +2,11 @@
 
 ## Current Phase
 
-Week 2 — Resume-Ready MVP
+Week 2 — Resume-Ready MVP: DONE
 
 ## Current Day
 
-Day 13 — Engineering Cleanup: DONE
+Day 14 — Resume Ready: DONE
 
 ## Day 1 — Data: DONE
 
@@ -251,6 +251,12 @@ Cost sensitivity production results：
 - Validation：完成 static review 与 `git diff --check`；按已知 sandbox 限制未运行 `uv` / pytest。
 - Semantics：未修改 factor、research、portfolio、execution、turnover、cost、return 或 NAV semantics。
 
+## Day 14 — Resume Ready: DONE
+
+- Root README 已重写为中文为主、Quant / Engineering 术语中英结合的项目展示页，并补充 workflow Mermaid architecture、frozen baseline 与 correctness / timing 设计。
+- 已汇总 baseline、OOS、cost sensitivity 与 factor combination production results，明确区分 observation、interpretation 与 limitation，并完整披露当前 data / execution / OOS 限制。
+- 已补充项目结构、one-command runner、tests、outputs 与 profiling-first 后续计划；本轮未生成 resume bullets，未修改 quant semantics、config 或 production artifacts。
+
 ## Known Limitations
 
 - Frozen current-membership CSI300 universe 存在 survivorship / membership bias。
@@ -259,7 +265,7 @@ Cost sensitivity production results：
 - Longer-horizon forward returns overlap；daily IC observations 不应解释为完全 independent，当前 ICIR 也不用于严格统计显著性判断。
 - Week 1 假设可以按 past-only marked close 理想化成交；不模拟 suspension 无法成交、limit up/down、bid/ask、volume participation、liquidity 或 market impact。
 
-## Next — Day 14: Resume Ready
+## Next — Day 15: Profiling
 
-- README、架构图、结果与 limitations
-- 第一版简历 bullets 和项目介绍
+- 定位 CPU / memory bottleneck 并保存 baseline benchmark。
+- 先 profiling，再决定后续 Python optimization 与 C++ / pybind11 hot path。
